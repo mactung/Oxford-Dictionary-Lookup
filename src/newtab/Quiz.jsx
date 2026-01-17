@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Check, X, Clock, Brain } from 'lucide-react';
+import { Check, X, Clock, Brain, ArrowLeft } from 'lucide-react';
 
-export default function Quiz({ vocabulary, onUpdateWord }) {
+export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
     const [questions, setQuestions] = useState([]);
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     const [score, setScore] = useState(0);
@@ -135,46 +135,63 @@ export default function Quiz({ vocabulary, onUpdateWord }) {
     // Need at least 4 words
     if (vocabulary.length < 4) {
         return (
-            <div className="flex flex-col items-center justify-center py-10 text-center bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
-                <Brain className="text-gray-300 mb-3" size={48} />
-                <p className="text-oxford-blue font-medium">Keep saving words!</p>
-                <p className="text-gray-500 text-sm">You need at least 4 saved words to unlock practice quizzes.</p>
+            <div className="flex flex-col items-center justify-center h-full text-center bg-white rounded-3xl p-10 shadow-xl max-w-lg mx-auto">
+                <Brain className="text-gray-200 mb-6" size={80} />
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Need more words</h2>
+                <p className="text-gray-500 mb-8">You need at least 4 saved words to unlock practice quizzes.</p>
+                <button onClick={onExit} className="text-gray-400 hover:text-gray-600 font-medium">Close</button>
             </div>
         );
     }
 
     if (questions.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-                <Check className="text-green-500 mb-4 bg-green-100 p-3 rounded-full" size={64} />
-                <h2 className="text-2xl font-bold text-oxford-blue mb-2">All Caught Up!</h2>
-                <p className="text-gray-500 mb-6">You have no words due for review right now.</p>
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl p-10 shadow-xl max-w-lg mx-auto">
+                <div className="bg-green-100 p-6 rounded-full mb-6">
+                    <Check className="text-green-500" size={48} />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-800 mb-2">You're all set!</h2>
+                <p className="text-gray-500 mb-8 text-lg">You have no words due for review right now.</p>
 
-                <button
-                    onClick={() => generateQuestions(true)}
-                    className="flex items-center gap-2 text-oxford-blue hover:text-blue-700 font-medium transition-colors"
-                >
-                    <Clock size={18} />
-                    Review Ahead (Practice anyway)
-                </button>
+                <div className="flex flex-col gap-3 w-full">
+                    <button
+                        onClick={() => generateQuestions(true)}
+                        className="w-full bg-oxford-blue text-white py-3.5 rounded-xl font-bold hover:bg-blue-800 transition-colors flex items-center justify-center gap-2"
+                    >
+                        <Clock size={20} />
+                        Review Ahead
+                    </button>
+                    <button
+                        onClick={onExit}
+                        className="w-full text-gray-400 hover:bg-gray-50 py-3 rounded-xl font-medium transition-colors"
+                    >
+                        Back to Home
+                    </button>
+                </div>
             </div>
         );
     }
 
     if (showScore) {
         return (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-                <h2 className="text-2xl font-bold text-oxford-blue mb-2">Session Complete!</h2>
-                <div className="text-5xl font-bold text-green-500 mb-6">{score} <span className="text-gray-300 text-3xl">/ {questions.length}</span></div>
+            <div className="flex flex-col items-center justify-center py-20 text-center bg-white rounded-3xl p-10 shadow-xl max-w-lg mx-auto">
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Session Complete!</h2>
+                <div className="text-6xl font-bold text-green-500 mb-8">{score} <span className="text-gray-300 text-4xl">/ {questions.length}</span></div>
 
-                <p className="text-gray-500 mb-6">Come back later for more scheduled reviews.</p>
-
-                <button
-                    onClick={() => generateQuestions(false)}
-                    className="bg-oxford-blue text-white px-8 py-3 rounded-lg hover:bg-blue-800 transition-colors font-medium shadow-md"
-                >
-                    Update & Continue
-                </button>
+                <div className="flex flex-col gap-3 w-full">
+                    <button
+                        onClick={() => generateQuestions(false)}
+                        className="w-full bg-oxford-blue text-white py-3.5 rounded-xl font-bold hover:bg-blue-800 transition-colors shadow-lg shadow-blue-900/10"
+                    >
+                        Continue Reviewing
+                    </button>
+                    <button
+                        onClick={onExit}
+                        className="w-full border border-gray-200 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-50 transition-colors"
+                    >
+                        Back to Home
+                    </button>
+                </div>
             </div>
         );
     }
@@ -182,59 +199,65 @@ export default function Quiz({ vocabulary, onUpdateWord }) {
     const currentQuestion = questions[currentQuestionIndex];
 
     return (
-        <div className="max-w-2xl mx-auto">
-            <div className={`overflow-hidden transition-all ${isReviewAhead ? 'border-orange-200' : ''}`}>
-                {/* Header */}
-                <div className="flex justify-between items-center mb-6">
-                    <div>
-                        <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">Question {currentQuestionIndex + 1} of {questions.length}</span>
-                        {isReviewAhead && <span className="ml-2 text-xs bg-orange-100 text-orange-600 px-2 py-1 rounded font-bold">Extra Practice</span>}
+        <div className="max-w-2xl mx-auto w-full">
+            <div className={`bg-white rounded-3xl shadow-xl overflow-hidden transition-all relative ${isReviewAhead ? 'border-4 border-orange-100' : ''}`}>
+                <button onClick={onExit} className="absolute top-6 right-6 text-gray-300 hover:text-gray-500 transition-colors">
+                    <X size={24} />
+                </button>
+
+                <div className="p-8 md:p-12">
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-10">
+                        <div>
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Question {currentQuestionIndex + 1} of {questions.length}</span>
+                            {isReviewAhead && <span className="ml-2 text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">Review Ahead</span>}
+                        </div>
+                        <div className="bg-blue-50 text-oxford-blue px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">
+                            Score: {score}
+                        </div>
                     </div>
-                    <div className="bg-blue-50 text-oxford-blue px-3 py-1 rounded-full text-sm font-bold">
-                        Score: {score}
+
+                    {/* Question */}
+                    <div className="text-center mb-12">
+                        <h2 className="text-gray-400 text-sm font-medium mb-3 uppercase tracking-wide">Definition of</h2>
+                        <h1 className="text-4xl md:text-5xl font-bold text-oxford-blue mb-2">{currentQuestion.wordObj.headword}</h1>
                     </div>
-                </div>
 
-                {/* Question */}
-                <div className="text-center mb-8">
-                    <h2 className="text-gray-500 text-sm mb-2">What is the definition of</h2>
-                    <h1 className="text-4xl font-bold text-oxford-blue">{currentQuestion.wordObj.headword}?</h1>
-                </div>
+                    {/* Options */}
+                    <div className="grid gap-3">
+                        {currentQuestion.options.map((option, index) => {
+                            let buttonClass = "w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 flex justify-between items-center group relative overflow-hidden ";
+                            const isSelected = selectedAnswer === option;
+                            const isCorrect = option === currentQuestion.correctAnswer;
 
-                {/* Options */}
-                <div className="grid gap-3">
-                    {currentQuestion.options.map((option, index) => {
-                        let buttonClass = "w-full text-left p-4 rounded-xl border-2 transition-all duration-200 flex justify-between items-center group ";
-                        const isSelected = selectedAnswer === option;
-                        const isCorrect = option === currentQuestion.correctAnswer;
-
-                        if (selectedAnswer) {
-                            if (isSelected && isCorrect) {
-                                buttonClass += "bg-green-50 border-green-500 text-green-900 shadow-sm";
-                            } else if (isSelected && !isCorrect) {
-                                buttonClass += "bg-red-50 border-red-500 text-red-900 shadow-sm";
-                            } else if (isCorrect) {
-                                buttonClass += "bg-green-50 border-green-300 text-green-800";
+                            if (selectedAnswer) {
+                                if (isSelected && isCorrect) {
+                                    buttonClass += "bg-green-50 border-green-500 text-green-900 shadow-sm z-10 scale-[1.02]";
+                                } else if (isSelected && !isCorrect) {
+                                    buttonClass += "bg-red-50 border-red-500 text-red-900 shadow-sm z-10 scale-[1.02]";
+                                } else if (isCorrect) {
+                                    buttonClass += "bg-green-50 border-green-300 text-green-800 opacity-100";
+                                } else {
+                                    buttonClass += "bg-gray-50 border-gray-100 opacity-30 grayscale blur-[1px]";
+                                }
                             } else {
-                                buttonClass += "bg-gray-50 border-gray-100 opacity-40 grayscale";
+                                buttonClass += "bg-white border-gray-100 hover:border-oxford-blue hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-0.5";
                             }
-                        } else {
-                            buttonClass += "bg-white border-gray-100 hover:border-oxford-blue hover:bg-blue-50/50 hover:shadow-md";
-                        }
 
-                        return (
-                            <button
-                                key={index}
-                                onClick={() => handleAnswerClick(option)}
-                                disabled={!!selectedAnswer}
-                                className={buttonClass}
-                            >
-                                <span className="font-medium text-[15px] leading-snug">{option}</span>
-                                {selectedAnswer && isCorrect && <Check size={20} className="text-green-600 shrink-0 ml-3" />}
-                                {selectedAnswer && isSelected && !isCorrect && <X size={20} className="text-red-600 shrink-0 ml-3" />}
-                            </button>
-                        );
-                    })}
+                            return (
+                                <button
+                                    key={index}
+                                    onClick={() => handleAnswerClick(option)}
+                                    disabled={!!selectedAnswer}
+                                    className={buttonClass}
+                                >
+                                    <span className="font-medium text-[16px] leading-snug relative z-10">{option}</span>
+                                    {selectedAnswer && isCorrect && <Check size={24} className="text-green-600 shrink-0 ml-4 relative z-10" />}
+                                    {selectedAnswer && isSelected && !isCorrect && <X size={24} className="text-red-600 shrink-0 ml-4 relative z-10" />}
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>
