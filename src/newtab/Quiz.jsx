@@ -72,17 +72,20 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
             return w.nextReview <= now;
         });
 
-        // If reviewing ahead or not enough due words, fill up to 5
-        if (reviewAhead || candidates.length < 5) {
-            const others = vocabulary.filter(w => !candidates.includes(w))
-                .sort((a, b) => (a.nextReview || 0) - (b.nextReview || 0));
+        // If reviewing ahead, strictly only allowing "wrong" words (SRS Level 0 or undefined).
+        // Correct words (SRS Level > 0) must wait for their time.
+        if (reviewAhead) {
+            const wrongWordsNotDue = vocabulary.filter(w =>
+                !candidates.includes(w) && (w.srsLevel === 0 || !w.srsLevel)
+            ).sort((a, b) => (a.nextReview || 0) - (b.nextReview || 0));
 
-            // Take only enough to reach 5 total, or all if we have less than 5 total
+            // Fill up to 5
             const needed = 5 - candidates.length;
             if (needed > 0) {
-                candidates = [...candidates, ...others.slice(0, needed)];
+                candidates = [...candidates, ...wrongWordsNotDue.slice(0, needed)];
             }
         }
+        // NOTE: We do NOT backfill for normal sessions anymore, enforcing strict SRS timing.
 
         // Strict limit to 5 words
         const selectedWords = candidates.slice(0, 5);
