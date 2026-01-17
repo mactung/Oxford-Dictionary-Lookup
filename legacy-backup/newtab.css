@@ -1,0 +1,100 @@
+body {
+    background-color: #f4f7f6;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+header {
+    margin-bottom: 30px;
+    text-align: center;
+}
+
+header h1 {
+    color: #002147;
+    margin-bottom: 10px;
+}
+
+.vocab-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.vocab-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border-top: 5px solid #002147;
+}
+
+.vocab-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.vocab-card .word {
+    font-size: 24px;
+    font-weight: 700;
+    color: #002147;
+    margin-bottom: 5px;
+}
+
+.vocab-card .pos {
+    font-size: 14px;
+    color: #666;
+    font-style: italic;
+    margin-bottom: 10px;
+}
+
+.vocab-card .phonetic {
+    font-family: 'Arial', sans-serif;
+    color: #0047AB;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.vocab-card .definition {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #333;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.delete-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #bbb;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 5px;
+    border-radius: 50%;
+    transition: color 0.2s, background 0.2s;
+}
+
+.delete-btn:hover {
+    color: #e74c3c;
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.empty-state {
+    text-align: center;
+    color: #888;
+    margin-top: 50px;
+    font-size: 18px;
+}

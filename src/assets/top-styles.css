@@ -1,0 +1,27 @@
+/* top-styles.css - Injected into the main page (not shadow DOM) */
+.oxford-lookup-icon {
+  position: absolute;
+  width: 32px;
+  height: 32px;
+  background-color: #002147; /* Oxford Blue */
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2147483647; /* Max z-index */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+  font-family: serif;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.oxford-lookup-icon:hover {
+  transform: scale(1.1);
+}
+
+.oxford-lookup-icon::after {
+  content: "Ox"; /* Temporarily using text icon */
+}
