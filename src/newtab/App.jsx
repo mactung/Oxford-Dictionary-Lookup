@@ -1,6 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
-import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award } from 'lucide-react';
+import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award, Plus, Loader2, Check } from 'lucide-react';
+import { parseOxfordHTML } from '../utils/parser';
 
 import Quiz from './Quiz';
 
@@ -8,7 +9,16 @@ export default function App() {
     const [vocabulary, setVocabulary] = useState([]);
     const [activeTab, setActiveTab] = useState('home'); // home, library
     const [isQuizActive, setIsQuizActive] = useState(false);
-    const [searchQuery, setSearchQuery] = useState('');
+
+    // Search/Add State
+    const [dashboardSearch, setDashboardSearch] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchedWordData, setSearchedWordData] = useState(null);
+    const [searchError, setSearchError] = useState(null);
+    const [showAddModal, setShowAddModal] = useState(false);
+
+    // Library Search State
+    const [librarySearchQuery, setLibrarySearchQuery] = useState('');
 
     useEffect(() => {
         chrome.storage.local.get(['vocabulary'], (result) => {
@@ -35,13 +45,73 @@ export default function App() {
     };
 
     const playAudio = (url, e) => {
-        e.stopPropagation();
+        if (e) e.stopPropagation();
         if (url) new Audio(url).play();
     }
 
+    // --- Search & Add Logic ---
+    const handleDashboardSearch = (e) => {
+        e.preventDefault();
+        const wordToSearch = dashboardSearch.trim();
+        if (!wordToSearch) return;
+
+        // 1. Check if locally exists
+        const existing = vocabulary.find(w => w.headword.toLowerCase() === wordToSearch.toLowerCase());
+        if (existing) {
+            setSearchedWordData({ ...existing, isExisting: true });
+            setShowAddModal(true);
+            return;
+        }
+
+        // 2. Fetch from Oxford
+        setIsSearching(true);
+        setSearchError(null);
+        setSearchedWordData(null);
+        setShowAddModal(true); // Show modal in loading state
+
+        chrome.runtime.sendMessage({ action: 'fetchDefinition', word: wordToSearch }, (response) => {
+            setIsSearching(false);
+            if (response && response.success) {
+                const parsed = parseOxfordHTML(response.html);
+                if (parsed.error) {
+                    setSearchError(parsed.error);
+                } else {
+                    setSearchedWordData(parsed);
+                }
+            } else {
+                setSearchError(response?.error || 'Failed to fetch definition.');
+            }
+        });
+    };
+
+    const handleAddWord = () => {
+        if (!searchedWordData) return;
+
+        const newWord = {
+            ...searchedWordData,
+            contextUrl: 'New Tab', // Source
+            srsLevel: 0,
+            nextReview: Date.now()
+        };
+
+        const newVocab = [...vocabulary, newWord];
+        setVocabulary(newVocab);
+        chrome.storage.local.set({ vocabulary: newVocab });
+
+        setSearchedWordData({ ...newWord, isExisting: true }); // Mark as existing now
+        setDashboardSearch(''); // Clear input
+    };
+
+    const closeAddModal = () => {
+        setShowAddModal(false);
+        setSearchedWordData(null);
+        setSearchError(null);
+        setIsSearching(false);
+    };
+
     // --- Derived State ---
     const reversedList = [...vocabulary].reverse();
-    const filteredList = reversedList.filter(w => w.headword.toLowerCase().includes(searchQuery.toLowerCase()));
+    const filteredList = reversedList.filter(w => w.headword.toLowerCase().includes(librarySearchQuery.toLowerCase()));
 
     const dueWordsCount = vocabulary.filter(w => {
         if (!w.nextReview) return true;
@@ -54,7 +124,7 @@ export default function App() {
 
     const StatsCard = ({ title, value, icon: Icon, color }) => (
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex items-center gap-4 hover:shadow-md transition-shadow">
-            <div className={`p - 3 rounded - xl ${color} `}>
+            <div className={`p-3 rounded-xl ${color}`}>
                 <Icon size={24} className="text-white" />
             </div>
             <div>
@@ -81,10 +151,10 @@ export default function App() {
                 </div>
                 {/* Level Badge */}
                 <div
-                    className={`text - [10px] font - bold px - 2 py - 0.5 rounded - full uppercase tracking - wide ${(item.srsLevel || 0) >= 4 ? 'bg-green-100 text-green-700' :
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide ${(item.srsLevel || 0) >= 4 ? 'bg-green-100 text-green-700' :
                         (item.srsLevel || 0) >= 2 ? 'bg-blue-100 text-blue-700' :
                             'bg-yellow-100 text-yellow-700'
-                        } `}
+                        }`}
                 >
                     Lvl {item.srsLevel || 0}
                 </div>
@@ -111,10 +181,10 @@ export default function App() {
                         className="text-gray-400 hover:text-oxford-blue transition-colors bg-gray-50 hover:bg-blue-50 p-1.5 rounded-md"
                     >
                         <ExternalLink size={14} />
-                    </a >
-                </div >
-            </div >
-        </div >
+                    </a>
+                </div>
+            </div>
+        </div>
     );
 
     // --- Main Render ---
@@ -169,9 +239,26 @@ export default function App() {
                 {activeTab === 'home' && (
                     <div className="space-y-10 animate-slide-up">
                         {/* Greeting & Date */}
-                        <div>
+                        <div className="text-center md:text-left">
                             <h1 className="text-3xl font-bold text-gray-900">Good Afternoon!</h1>
                             <p className="text-gray-500 mt-1">Ready to expand your vocabulary today?</p>
+                        </div>
+
+                        {/* Search & Add Bar */}
+                        <div className="relative max-w-2xl mx-auto md:mx-0">
+                            <form onSubmit={handleDashboardSearch} className="relative group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={20} />
+                                <input
+                                    type="text"
+                                    className="w-full bg-white pl-12 pr-4 py-4 rounded-2xl shadow-sm border border-gray-200 focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-lg"
+                                    placeholder="Search dictionary or add a new word..."
+                                    value={dashboardSearch}
+                                    onChange={(e) => setDashboardSearch(e.target.value)}
+                                />
+                                <button type="submit" className="absolute right-3 top-1/2 -translate-y-1/2 bg-gray-100 hover:bg-oxford-blue hover:text-white text-gray-600 p-2 rounded-xl transition-all">
+                                    <Plus size={20} />
+                                </button>
+                            </form>
                         </div>
 
                         {/* Progress Section */}
@@ -228,8 +315,8 @@ export default function App() {
                                     type="text"
                                     placeholder="Search your words..."
                                     className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    value={librarySearchQuery}
+                                    onChange={(e) => setLibrarySearchQuery(e.target.value)}
                                 />
                             </div>
                         </div>
@@ -268,6 +355,94 @@ export default function App() {
                     <span className="text-[10px] font-bold mt-1">Library</span>
                 </button>
             </div>
+
+            {/* Add Word Modal / Overlay */}
+            {showAddModal && (
+                <div
+                    className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+                    onClick={closeAddModal}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Header */}
+                        <div className="bg-oxford-blue text-white px-6 py-4 flex justify-between items-center">
+                            <h3 className="text-lg font-bold">Word Lookup</h3>
+                            <button onClick={closeAddModal} className="hover:text-red-200 transition-colors"><Plus className="rotate-45" size={24} /></button>
+                        </div>
+
+                        {/* Body */}
+                        <div className="p-6">
+                            {isSearching ? (
+                                <div className="py-12 flex flex-col items-center justify-center text-gray-400">
+                                    <Loader2 className="animate-spin mb-3 text-oxford-blue" size={32} />
+                                    <p>Searching Oxford Dictionary...</p>
+                                </div>
+                            ) : searchError ? (
+                                <div className="py-8 text-center">
+                                    <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Search size={32} />
+                                    </div>
+                                    <p className="text-gray-800 font-bold mb-1">Not Found</p>
+                                    <p className="text-gray-500 text-sm mb-6">{searchError}</p>
+                                    <button onClick={closeAddModal} className="text-oxford-blue font-medium hover:underline">Try another word</button>
+                                </div>
+                            ) : searchedWordData ? (
+                                <div>
+                                    {/* HEADWORD */}
+                                    <div className="flex items-baseline gap-2 mb-2">
+                                        <h2 className="text-3xl font-bold text-gray-900">{searchedWordData.headword}</h2>
+                                        <span className="text-gray-500 italic font-serif">{searchedWordData.pos}</span>
+                                    </div>
+
+                                    {/* PHONETICS */}
+                                    {searchedWordData.phonetics && searchedWordData.phonetics.length > 0 && (
+                                        <div className="flex flex-wrap gap-2 mb-6">
+                                            {searchedWordData.phonetics.map((p, i) => (
+                                                <div key={i} className="flex items-center gap-2 bg-blue-50 px-3 py-1.5 rounded-full text-oxford-blue">
+                                                    {p.audioUrl && (
+                                                        <button onClick={() => playAudio(p.audioUrl)} className="hover:scale-110 transition-transform">
+                                                            <Volume2 size={16} />
+                                                        </button>
+                                                    )}
+                                                    <span className="font-mono text-sm">/{p.ipa}/</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* DEFINITION */}
+                                    <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100">
+                                        <p className="font-medium text-gray-800 mb-2">
+                                            {searchedWordData.senses?.[0]?.definition}
+                                        </p>
+                                        {searchedWordData.senses?.[0]?.examples?.[0] && (
+                                            <p className="text-gray-500 italic text-sm pl-3 border-l-2 border-blue-200">
+                                                "{searchedWordData.senses[0].examples[0]}"
+                                            </p>
+                                        )}
+                                    </div>
+
+                                    {/* ACTION BUTTON */}
+                                    {searchedWordData.isExisting ? (
+                                        <div className="bg-green-50 text-green-700 px-4 py-3 rounded-xl flex items-center justify-center gap-2 font-bold mb-2">
+                                            <Check size={20} /> Already in Library
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={handleAddWord}
+                                            className="w-full bg-oxford-blue text-white py-3.5 rounded-xl font-bold hover:bg-blue-800 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-900/10"
+                                        >
+                                            <Plus size={20} /> Add to Vocabulary
+                                        </button>
+                                    )}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
