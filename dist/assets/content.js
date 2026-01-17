@@ -7126,7 +7126,12 @@
         const vocabulary = result.vocabulary || [];
         const exists = vocabulary.some((item) => item.headword === data.headword);
         if (!exists) {
-          const newVocab = [...vocabulary, { ...data, contextUrl: window.location.href }];
+          const newVocab = [...vocabulary, {
+            ...data,
+            contextUrl: window.location.href,
+            srsLevel: 0,
+            nextReview: Date.now()
+          }];
           chrome.storage.local.set({ vocabulary: newVocab });
         }
       });
@@ -7135,7 +7140,8 @@
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",
       {
-        className: "fixed bg-white rounded-lg shadow-2xl border border-gray-100 overflow-hidden w-[380px] max-h-[500px] flex flex-col font-sans text-left top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2",
+        className: "absolute bg-white rounded-lg shadow-2xl border border-gray-100 overflow-hidden w-[380px] max-h-[500px] flex flex-col font-sans text-left",
+        style: { top: y2, left: x2, zIndex: 999999 },
         onMouseDown: (e) => e.stopPropagation(),
         children: [
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-oxford-blue text-white px-4 py-3 flex justify-between items-center shrink-0", children: [
@@ -7294,6 +7300,16 @@
       }
     }, 10);
   });
+  const style = document.createElement("style");
+  style.textContent = `
+    .ox-saved-highlight {
+        background-color: #ffeb3b; 
+        color: black;
+        cursor: pointer;
+        border-bottom: 2px solid #fbc02d;
+    }
+`;
+  document.head.appendChild(style);
   function highlightSavedWords() {
     chrome.storage.local.get(["vocabulary"], (result) => {
       const vocabulary = result.vocabulary || [];
@@ -7335,12 +7351,15 @@
           if (before) fragment.appendChild(document.createTextNode(before));
           const span = document.createElement("span");
           span.className = "ox-saved-highlight";
-          span.textContent = match[0];
-          span.addEventListener("mouseenter", (e) => {
+          const matchedWord = match[0];
+          span.textContent = matchedWord;
+          span.addEventListener("click", (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             const rect = span.getBoundingClientRect();
-            const x2 = rect.left + window.scrollX + rect.width / 2;
-            const y2 = rect.top + window.scrollY;
-            mountPopup(x2, y2, match[0]);
+            const x2 = rect.left + window.scrollX;
+            const y2 = rect.bottom + window.scrollY + 5;
+            mountPopup(x2, y2, matchedWord);
           });
           fragment.appendChild(span);
           lastIndex = pattern.lastIndex;

@@ -33,7 +33,12 @@ export default function Popup({ x, y, word, onClose }) {
             const vocabulary = result.vocabulary || [];
             const exists = vocabulary.some(item => item.headword === data.headword);
             if (!exists) {
-                const newVocab = [...vocabulary, { ...data, contextUrl: window.location.href }];
+                const newVocab = [...vocabulary, {
+                    ...data,
+                    contextUrl: window.location.href,
+                    srsLevel: 0,
+                    nextReview: Date.now()
+                }];
                 chrome.storage.local.set({ vocabulary: newVocab });
             }
         });
@@ -43,7 +48,8 @@ export default function Popup({ x, y, word, onClose }) {
 
     return (
         <div
-            className="fixed bg-white rounded-lg shadow-2xl border border-gray-100 overflow-hidden w-[380px] max-h-[500px] flex flex-col font-sans text-left top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
+            className="absolute bg-white rounded-lg shadow-2xl border border-gray-100 overflow-hidden w-[380px] max-h-[500px] flex flex-col font-sans text-left"
+            style={{ top: y, left: x, zIndex: 999999 }}
             onMouseDown={(e) => e.stopPropagation()} // Prevent closing when clicking inside
         >
             {/* Header */}

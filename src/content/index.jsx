@@ -132,6 +132,18 @@ document.addEventListener('mouseup', (e) => {
     }, 10);
 });
 
+// --- Styles Injection ---
+const style = document.createElement('style');
+style.textContent = `
+    .ox-saved-highlight {
+        background-color: #ffeb3b; 
+        color: black;
+        cursor: pointer;
+        border-bottom: 2px solid #fbc02d;
+    }
+`;
+document.head.appendChild(style);
+
 // --- Highlighting Logic ---
 function highlightSavedWords() {
     chrome.storage.local.get(['vocabulary'], (result) => {
@@ -152,8 +164,6 @@ function highlightSavedWords() {
                     if (node.parentElement && node.parentElement.classList.contains('ox-saved-highlight')) {
                         return NodeFilter.FILTER_REJECT;
                     }
-                    // Check if node contains any of the words (optimization)
-                    // For massive lists this might be slow, but for personal vocab it's ok.
                     return NodeFilter.FILTER_ACCEPT;
                 }
             }
@@ -195,14 +205,19 @@ function highlightSavedWords() {
 
                 const span = document.createElement('span');
                 span.className = 'ox-saved-highlight';
-                span.textContent = match[0];
+                const matchedWord = match[0]; // Capture value
+                span.textContent = matchedWord;
 
-                // Add hover event
-                span.addEventListener('mouseenter', (e) => {
+                // Add click event
+                span.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
                     const rect = span.getBoundingClientRect();
-                    const x = rect.left + window.scrollX + (rect.width / 2);
-                    const y = rect.top + window.scrollY;
-                    mountPopup(x, y, match[0]); // Use matched text or canonical headword? Matched text is safer for lookup
+                    const x = rect.left + window.scrollX; // Align left
+                    const y = rect.bottom + window.scrollY + 5; // Below the word
+
+                    mountPopup(x, y, matchedWord);
                 });
 
                 fragment.appendChild(span);
