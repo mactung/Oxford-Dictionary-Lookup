@@ -160,29 +160,57 @@ export default function App() {
                 </div>
             </div>
 
-            <div className="text-gray-600 text-sm line-clamp-2 mb-4 h-10 leading-relaxed">
-                {item.senses && item.senses[0] ? item.senses[0].definition : 'No definition'}
+            {/* Phonetics Section */}
+            {item.phonetics && item.phonetics.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                    {item.phonetics.map((p, i) => (
+                        <div key={i} className="flex items-center gap-1.5 bg-blue-50 px-2 py-1 rounded-lg text-oxford-blue text-sm">
+                            {p.type && <span className="text-[10px] font-bold uppercase text-blue-400">{p.type}</span>}
+                            <span className="font-mono text-xs">/{p.ipa}/</span>
+                            {p.audioUrl && (
+                                <button
+                                    onClick={(e) => playAudio(p.audioUrl, e)}
+                                    className="hover:scale-110 transition-transform text-blue-600"
+                                >
+                                    <Volume2 size={12} />
+                                </button>
+                            )}
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Senses & Examples */}
+            <div className="space-y-3 mt-4">
+                {item.senses && item.senses.map((sense, i) => (
+                    <div key={i} className="text-sm">
+                        <div className="text-gray-800 font-medium leading-snug mb-1">
+                            <span className="text-gray-400 mr-2">{i + 1}.</span>
+                            {sense.definition}
+                        </div>
+                        {sense.examples && sense.examples.length > 0 && (
+                            <ul className="text-gray-500 pl-6 space-y-0.5 border-l-2 border-gray-100 mt-1">
+                                {sense.examples.map((ex, j) => (
+                                    <li key={j} className="italic text-xs">"{ex}"</li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                ))}
+                {(!item.senses || item.senses.length === 0) && (
+                    <div className="text-gray-400 italic text-sm">No details found.</div>
+                )}
             </div>
 
-            <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-50">
-                <div className="flex gap-2">
-                    {item.phonetics && item.phonetics[0] && item.phonetics[0].audioUrl && (
-                        <button
-                            onClick={(e) => playAudio(item.phonetics[0].audioUrl, e)}
-                            className="text-gray-400 hover:text-oxford-blue transition-colors bg-gray-50 hover:bg-blue-50 p-1.5 rounded-md"
-                        >
-                            <Volume2 size={14} />
-                        </button>
-                    )}
-                    <a
-                        href={`https://www.oxfordlearnersdictionaries.com/definition/english/${item.headword}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-oxford-blue transition-colors bg-gray-50 hover:bg-blue-50 p-1.5 rounded-md"
-                    >
-                        <ExternalLink size={14} />
-                    </a>
-                </div>
+            <div className="flex items-center justify-end mt-4 pt-3 border-t border-gray-50">
+                <a
+                    href={`https://www.oxfordlearnersdictionaries.com/definition/english/${item.headword}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-gray-400 hover:text-oxford-blue transition-colors flex items-center gap-1 text-xs"
+                >
+                    Review Context <ExternalLink size={12} />
+                </a>
             </div>
         </div>
     );

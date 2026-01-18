@@ -20,7 +20,7 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
 
     useEffect(() => {
         if (questions.length === 0 && vocabulary.length > 0 && !isPreQuizReview) {
-            // Initial load: don't auto-start, wait for user or empty state handled below
+            generateQuestions();
         }
     }, [vocabulary]);
 
@@ -140,6 +140,18 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
                     prompt: "Listen and choose the meaning",
                     correctAnswer: definition,
                     options: [definition, ...getRandomDistractors(otherWords, 3, 'definition')].sort(() => 0.5 - Math.random())
+                });
+            }
+
+            // 5. IPA Question (if IPA and audio exists)
+            if (hasAudio && word.phonetics && word.phonetics[0] && word.phonetics[0].ipa) {
+                newQuestions.push({
+                    wordObj: word,
+                    type: 'ipa',
+                    audioUrl: word.phonetics[0].audioUrl,
+                    prompt: `How is "${word.headword}" pronounced?`,
+                    correctAnswer: word.phonetics[0].ipa,
+                    options: [word.phonetics[0].ipa, ...getRandomDistractors(otherWords, 3, 'ipa')].sort(() => 0.5 - Math.random())
                 });
             }
         });
@@ -284,7 +296,12 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
                     {preQuizWords.map((word, idx) => (
                         <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
                             <div>
-                                <h3 className="text-lg font-bold text-gray-900">{word.headword}</h3>
+                                <div className="flex items-baseline gap-2">
+                                    <h3 className="text-lg font-bold text-gray-900">{word.headword}</h3>
+                                    {word.phonetics?.[0]?.ipa && (
+                                        <span className="text-sm text-gray-500 font-mono">/{word.phonetics[0].ipa}/</span>
+                                    )}
+                                </div>
                                 <p className="text-sm text-gray-600 line-clamp-1">{word.senses?.[0]?.definition}</p>
                             </div>
                             {word.phonetics?.[0]?.audioUrl && (
