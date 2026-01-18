@@ -9,6 +9,11 @@ let shadowRoot = null;
 let reactRoot = null;
 
 function getHost() {
+    // Check if extension context is still valid
+    if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+        return null;
+    }
+
     let host = document.getElementById(HOST_ID);
     if (!host) {
         host = document.createElement('div');
@@ -24,8 +29,11 @@ function getHost() {
         // Inject Tailwind Styles
         const styleLink = document.createElement('link');
         styleLink.rel = 'stylesheet';
-        styleLink.href = chrome.runtime.getURL('assets/newtab.css');
-        shadowRoot.appendChild(styleLink);
+        // Double check runtime before access (though checked above)
+        if (chrome.runtime?.getURL) {
+            styleLink.href = chrome.runtime.getURL('assets/newtab.css');
+            shadowRoot.appendChild(styleLink);
+        }
 
         const container = document.createElement('div');
         container.className = 'font-sans text-base'; // Reset
@@ -93,7 +101,13 @@ const createIcon = (x, y, selectionText) => {
 };
 
 const mountPopup = (x, y, text) => {
-    const { reactRoot } = getHost();
+    const hostData = getHost();
+    if (!hostData) {
+        console.warn("Oxford Dictionary: Extension context invalidated. Please refresh the page.");
+        // Optionally alert user: alert("Please refresh the page to use the dictionary extension.");
+        return;
+    }
+    const { reactRoot } = hostData;
     reactRoot.render(<Popup x={x} y={y} word={text} onClose={removeHost} />);
 };
 
