@@ -20,6 +20,11 @@ export default function App() {
     // Library Search State
     const [librarySearchQuery, setLibrarySearchQuery] = useState('');
 
+    // Bookmarks State
+    const [bookmarkFolders, setBookmarkFolders] = useState([]);
+    const [selectedFolderId, setSelectedFolderId] = useState(null);
+    const [folderBookmarks, setFolderBookmarks] = useState([]);
+
     useEffect(() => {
         chrome.storage.local.get(['vocabulary'], (result) => {
             if (result.vocabulary) {
@@ -27,7 +32,47 @@ export default function App() {
                 setVocabulary(result.vocabulary);
             }
         });
+
+        // Load saved folder selection
+        chrome.storage.local.get(['selectedFolderId'], (result) => {
+            if (result.selectedFolderId) {
+                setSelectedFolderId(result.selectedFolderId);
+            }
+        });
+
+        // Fetch all bookmark folders
+        if (chrome.bookmarks) {
+            chrome.bookmarks.getTree((tree) => {
+                const folders = [];
+                const traverse = (nodes) => {
+                    nodes.forEach(node => {
+                        if (node.children) {
+                            // It's a folder (or root)
+                            if (node.id !== '0') { // Skip root
+                                folders.push({ id: node.id, title: node.title });
+                            }
+                            traverse(node.children);
+                        }
+                    });
+                };
+                traverse(tree);
+                setBookmarkFolders(folders);
+            });
+        }
     }, []);
+
+    // Fetch bookmarks when folder changes
+    useEffect(() => {
+        if (selectedFolderId && chrome.bookmarks) {
+            chrome.bookmarks.getChildren(selectedFolderId, (children) => {
+                const bookmarks = children.filter(node => node.url); // Only actual bookmarks
+                setFolderBookmarks(bookmarks);
+                chrome.storage.local.set({ selectedFolderId });
+            });
+        } else {
+            setFolderBookmarks([]);
+        }
+    }, [selectedFolderId]);
 
     const deleteWord = (headword, e) => {
         e.stopPropagation();
@@ -287,6 +332,58 @@ export default function App() {
                                     <Plus size={20} />
                                 </button>
                             </form>
+                        </div>
+
+                        {/* Bookmarks Section */}
+                        <div className="max-w-4xl mx-auto md:mx-0">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <BookOpen size={20} className="text-blue-500" />
+                                    Quick Access
+                                </h2>
+                                <select
+                                    value={selectedFolderId || ''}
+                                    onChange={(e) => setSelectedFolderId(e.target.value)}
+                                    className="bg-white border border-gray-200 text-gray-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2.5 outline-none hover:border-gray-300 transition-colors"
+                                >
+                                    <option value="" disabled>Select a folder</option>
+                                    {bookmarkFolders.map(folder => (
+                                        <option key={folder.id} value={folder.id}>{folder.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {folderBookmarks.length > 0 ? (
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {folderBookmarks.map(bookmark => (
+                                        <a
+                                            key={bookmark.id}
+                                            href={bookmark.url}
+                                            className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-3 group"
+                                        >
+                                            <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
+                                                <img 
+                                                    src={`chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(bookmark.url)}&size=32`}
+                                                    alt="" 
+                                                    className="w-5 h-5 object-contain"
+                                                    onError={(e) => { e.target.style.display = 'none'; }}
+                                                />
+                                            </div>
+                                            <span className="text-sm font-medium text-gray-700 truncate group-hover:text-blue-600 transition-colors">
+                                                {bookmark.title || bookmark.url}
+                                            </span>
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : selectedFolderId ? (
+                                <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-200">
+                                    <p className="text-gray-400 text-sm">No bookmarks in this folder.</p>
+                                </div>
+                            ) : (
+                                <div className="text-center py-8 bg-white rounded-xl border border-dashed border-gray-200">
+                                    <p className="text-gray-400 text-sm">Select a folder to view bookmarks.</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Progress Section */}

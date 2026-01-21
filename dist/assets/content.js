@@ -7211,6 +7211,10 @@
   let shadowRoot = null;
   let reactRoot = null;
   function getHost() {
+    var _a, _b;
+    if (typeof chrome === "undefined" || !((_a = chrome.runtime) == null ? void 0 : _a.id)) {
+      return null;
+    }
     let host = document.getElementById(HOST_ID);
     if (!host) {
       host = document.createElement("div");
@@ -7223,8 +7227,10 @@
       shadowRoot = host.attachShadow({ mode: "open" });
       const styleLink = document.createElement("link");
       styleLink.rel = "stylesheet";
-      styleLink.href = chrome.runtime.getURL("assets/newtab.css");
-      shadowRoot.appendChild(styleLink);
+      if ((_b = chrome.runtime) == null ? void 0 : _b.getURL) {
+        styleLink.href = chrome.runtime.getURL("assets/newtab.css");
+        shadowRoot.appendChild(styleLink);
+      }
       const container = document.createElement("div");
       container.className = "font-sans text-base";
       shadowRoot.appendChild(container);
@@ -7276,7 +7282,12 @@
     document.body.appendChild(iconElement);
   };
   const mountPopup = (x2, y2, text) => {
-    const { reactRoot: reactRoot2 } = getHost();
+    const hostData = getHost();
+    if (!hostData) {
+      console.warn("Oxford Dictionary: Extension context invalidated. Please refresh the page.");
+      return;
+    }
+    const { reactRoot: reactRoot2 } = hostData;
     reactRoot2.render(/* @__PURE__ */ jsxRuntimeExports.jsx(Popup, { x: x2, y: y2, word: text, onClose: removeHost }));
   };
   document.addEventListener("mouseup", (e) => {

@@ -18,6 +18,8 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
     const audioRef = useRef(null);
     const inputRef = useRef(null);
 
+    const failedHeadwords = useRef(new Set()); // Track words that have been failed in this session
+
     useEffect(() => {
         if (questions.length === 0 && vocabulary.length > 0 && !isPreQuizReview) {
             generateQuestions();
@@ -47,16 +49,14 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
 
     const calculateNextReview = (level) => {
         const now = Date.now();
-        const minutes = 60 * 1000;
-        const hours = 60 * minutes;
-        const days = 24 * hours;
+        const days = 24 * 60 * 60 * 1000;
 
         switch (level) {
-            case 0: return now + 1 * minutes;
-            case 1: return now + 10 * minutes;
-            case 2: return now + 1 * days;
-            case 3: return now + 3 * days;
-            default: return now + (level - 3) * 7 * days;
+            case 0: return now + 1 * days;
+            case 1: return now + 3 * days;
+            case 2: return now + 7 * days;
+            case 3: return now + 14 * days;
+            default: return now + (level * 7) * days;
         }
     };
 
@@ -166,6 +166,7 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
             setSelectedAnswer(null);
             setSpellingInput('');
             setFeedback(null);
+            failedHeadwords.current.clear(); // Reset failed words tracking
         } else {
             setQuestions([]);
             setIsPreQuizReview(false); // No questions generated
@@ -191,27 +192,34 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
 
     const processResult = (isCorrect) => {
         const currentQ = questions[currentQuestionIndex];
+        const headword = currentQ.wordObj.headword;
 
         if (isCorrect) {
             setScore(prev => prev + 1);
             setFeedback('correct');
 
-            // Only update SRS level ONCE per word per session ideally, but simplified here:
-            // We increase level if they get it right. Since we have multiple Qs per word, 
-            // this might inflate levels quickly. 
-            // Better logic: Track result per word, update at end. 
-            // For now, let's keep it simple: Use a small increment or only update on 'meaning' type?
-            // User requested "tuân thủ đúng thuật toán ngắt quãng".
-            // Let's just update as is for now, maybe refined later.
-
-            const currentLevel = currentQ.wordObj.srsLevel || 0;
-            const newLevel = currentLevel + 1;
-            onUpdateWord({
-                ...currentQ.wordObj,
-                srsLevel: newLevel,
-                nextReview: calculateNextReview(newLevel)
-            });
+            // If the word has already been failed in this session, do not increment SRS.
+            // Ensure it remains at SRS Level 0.
+            if (failedHeadwords.current.has(headword)) {
+                onUpdateWord({
+                    ...currentQ.wordObj,
+                    srsLevel: 0,
+                    nextReview: calculateNextReview(0)
+                });
+            } else {
+                // Determine new level based on current snapshot
+                const currentLevel = currentQ.wordObj.srsLevel || 0;
+                const newLevel = currentLevel + 1;
+                onUpdateWord({
+                    ...currentQ.wordObj,
+                    srsLevel: newLevel,
+                    nextReview: calculateNextReview(newLevel)
+                });
+            }
         } else {
+            // Mark word as failed for the rest of this session
+            failedHeadwords.current.add(headword);
+
             setFeedback('incorrect');
             onUpdateWord({
                 ...currentQ.wordObj,
