@@ -10,7 +10,10 @@ const copyExtensionUtils = () => {
         closeBundle: async () => {
             // Copy manifest
             await fs.copy('src/manifest.json', 'dist/manifest.json');
-            // Copy icons if any (skip for now or use placeholders)
+            // Copy icons
+            if (await fs.pathExists('src/assets/icons')) {
+                await fs.copy('src/assets/icons', 'dist/assets/icons');
+            }
         }
     }
 }

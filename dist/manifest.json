@@ -3,6 +3,12 @@
     "name": "Oxford Dictionary Lookup",
     "version": "1.0",
     "description": "Select text to view Oxford Dictionary definition.",
+    "icons": {
+        "16": "assets/icons/icon-16.png",
+        "32": "assets/icons/icon-32.png",
+        "48": "assets/icons/icon-48.png",
+        "128": "assets/icons/icon-128.png"
+    },
     "permissions": [
         "activeTab",
         "scripting",
