@@ -7105,11 +7105,25 @@
     const [error, setError] = reactExports.useState(null);
     const [saved, setSaved] = reactExports.useState(false);
     reactExports.useEffect(() => {
+      if (data && data.headword) {
+        chrome.storage.local.get(["vocabulary"], (result) => {
+          const vocabulary = result.vocabulary || [];
+          const exists = vocabulary.some((item) => item.headword === data.headword);
+          setSaved(exists);
+        });
+      }
+    }, [data]);
+    reactExports.useEffect(() => {
       setLoading(true);
       chrome.runtime.sendMessage({ action: "fetchDefinition", word }, (response) => {
         if (response && response.success) {
           const parsed = parseOxfordHTML(response.html);
-          setData(parsed);
+          if (parsed.error) {
+            setError(parsed.error);
+            setData(null);
+          } else {
+            setData(parsed);
+          }
         } else {
           setError((response == null ? void 0 : response.error) || "Failed to fetch");
         }
@@ -7120,7 +7134,7 @@
       if (url) new Audio(url).play();
     };
     const handleSave = () => {
-      if (!data) return;
+      if (!data || !data.headword) return;
       setSaved(true);
       chrome.storage.local.get(["vocabulary"], (result) => {
         const vocabulary = result.vocabulary || [];
@@ -7135,7 +7149,6 @@
           chrome.storage.local.set({ vocabulary: newVocab });
         }
       });
-      setTimeout(() => setSaved(false), 2e3);
     };
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(
       "div",

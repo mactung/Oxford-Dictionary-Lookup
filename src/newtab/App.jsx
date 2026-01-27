@@ -28,8 +28,16 @@ export default function App() {
     useEffect(() => {
         chrome.storage.local.get(['vocabulary'], (result) => {
             if (result.vocabulary) {
+                // Filter out corrupted items (missing headword) to prevent crashes
+                const validVocab = result.vocabulary.filter(item => item && item.headword);
+                
                 // Keep original order (Oldest -> Newest) in state
-                setVocabulary(result.vocabulary);
+                setVocabulary(validVocab);
+
+                // Self-heal: If we found invalid items, update storage
+                if (validVocab.length !== result.vocabulary.length) {
+                    chrome.storage.local.set({ vocabulary: validVocab });
+                }
             }
         });
 

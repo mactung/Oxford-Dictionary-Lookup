@@ -9,11 +9,26 @@ export default function Popup({ x, y, word, onClose }) {
     const [saved, setSaved] = useState(false);
 
     useEffect(() => {
+        if (data && data.headword) {
+            chrome.storage.local.get(['vocabulary'], (result) => {
+                const vocabulary = result.vocabulary || [];
+                const exists = vocabulary.some(item => item.headword === data.headword);
+                setSaved(exists);
+            });
+        }
+    }, [data]);
+
+    useEffect(() => {
         setLoading(true);
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word }, (response) => {
             if (response && response.success) {
                 const parsed = parseOxfordHTML(response.html);
-                setData(parsed);
+                if (parsed.error) {
+                    setError(parsed.error);
+                    setData(null);
+                } else {
+                    setData(parsed);
+                }
             } else {
                 setError(response?.error || 'Failed to fetch');
             }
@@ -26,7 +41,7 @@ export default function Popup({ x, y, word, onClose }) {
     };
 
     const handleSave = () => {
-        if (!data) return;
+        if (!data || !data.headword) return;
         setSaved(true);
 
         chrome.storage.local.get(['vocabulary'], (result) => {
@@ -42,8 +57,6 @@ export default function Popup({ x, y, word, onClose }) {
                 chrome.storage.local.set({ vocabulary: newVocab });
             }
         });
-
-        setTimeout(() => setSaved(false), 2000);
     };
 
     return (
