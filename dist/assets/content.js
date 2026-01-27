@@ -7160,7 +7160,7 @@
           /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-oxford-blue text-white px-4 py-3 flex justify-between items-center shrink-0", children: [
             /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "font-bold text-lg", children: "Oxford Dictionary" }),
             /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsxs(
+              data && /* @__PURE__ */ jsxRuntimeExports.jsxs(
                 "button",
                 {
                   onClick: handleSave,
