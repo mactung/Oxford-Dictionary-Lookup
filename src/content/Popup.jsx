@@ -69,13 +69,15 @@ export default function Popup({ x, y, word, onClose }) {
             <div className="bg-oxford-blue text-white px-4 py-3 flex justify-between items-center shrink-0">
                 <h1 className="font-bold text-lg">Oxford Dictionary</h1>
                 <div className="flex items-center gap-2">
-                    <button
-                        onClick={handleSave}
-                        className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${saved ? 'bg-white text-oxford-blue border-white' : 'border-white/40 hover:bg-white/10'}`}
-                    >
-                        <Star size={12} fill={saved ? "currentColor" : "none"} />
-                        {saved ? 'Saved' : 'Save'}
-                    </button>
+                    {data && (
+                        <button
+                            onClick={handleSave}
+                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${saved ? 'bg-white text-oxford-blue border-white' : 'border-white/40 hover:bg-white/10'}`}
+                        >
+                            <Star size={12} fill={saved ? "currentColor" : "none"} />
+                            {saved ? 'Saved' : 'Save'}
+                        </button>
+                    )}
                     <button onClick={onClose} className="hover:text-red-200 transition-colors">
                         <X size={20} />
                     </button>
