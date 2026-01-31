@@ -7151,7 +7151,7 @@
       }
     });
     const idioms = [];
-    entry.querySelectorAll(".idm-g").forEach((idmBlock) => {
+    doc.querySelectorAll(".idm-g").forEach((idmBlock) => {
       var _a2, _b2, _c, _d;
       const phrase = (_b2 = (_a2 = idmBlock.querySelector(".idm")) == null ? void 0 : _a2.textContent) == null ? void 0 : _b2.trim();
       const def = (_d = (_c = idmBlock.querySelector(".def")) == null ? void 0 : _c.textContent) == null ? void 0 : _d.trim();

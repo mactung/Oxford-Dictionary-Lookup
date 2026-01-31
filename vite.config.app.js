@@ -12,7 +12,7 @@ const copyExtensionUtils = () => {
             await fs.copy('src/manifest.json', 'dist/manifest.json');
             // Copy icons
             if (await fs.pathExists('src/assets/icons')) {
-                await fs.copy('src/assets/icons', 'dist/assets/icons');
+                await fs.copy('src/assets/icons', 'dist/icons');
             }
         }
     }
@@ -25,6 +25,7 @@ export default defineConfig({
         rollupOptions: {
             input: {
                 newtab: resolve(__dirname, 'src/newtab/index.html'),
+                popup: resolve(__dirname, 'src/popup/index.html'),
                 background: resolve(__dirname, 'src/background/index.js'),
             },
             output: {
