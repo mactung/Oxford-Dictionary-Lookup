@@ -7313,8 +7313,8 @@
     const generateQuestions = (vocab) => {
       var _a2, _b2;
       console.log("RandomQuizOverlay: Generating questions from vocab size", vocab.length);
-      if (!vocab || vocab.length < 1) {
-        console.log("RandomQuizOverlay: Not enough vocab");
+      if (!vocab || vocab.length < 4) {
+        console.log("RandomQuizOverlay: Not enough vocab (needs 4+)");
         return;
       }
       const now = Date.now();
@@ -7473,7 +7473,7 @@
       const styleLink = document.createElement("link");
       styleLink.rel = "stylesheet";
       if ((_b = chrome.runtime) == null ? void 0 : _b.getURL) {
-        styleLink.href = chrome.runtime.getURL("assets/newtab.css");
+        styleLink.href = chrome.runtime.getURL("assets/index.css");
         shadowRoot.appendChild(styleLink);
       }
       const container = document.createElement("div");

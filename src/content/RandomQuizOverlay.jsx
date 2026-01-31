@@ -21,8 +21,8 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
 
     const generateQuestions = (vocab) => {
         console.log('RandomQuizOverlay: Generating questions from vocab size', vocab.length);
-        if (!vocab || vocab.length < 1) {
-            console.log('RandomQuizOverlay: Not enough vocab');
+        if (!vocab || vocab.length < 4) {
+            console.log('RandomQuizOverlay: Not enough vocab (needs 4+)');
             return;
         }
 

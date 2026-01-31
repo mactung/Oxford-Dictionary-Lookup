@@ -57,9 +57,9 @@ function checkAndTriggerQuiz(specificTabId = null) {
                 return;
             }
 
-            // Need at least a few words to quiz -> Lowered to 1 for testing
-            if (vocabulary.length < 1) {
-                console.log('Random Practice: Not enough vocabulary');
+            // Need at least 4 words to quiz (for multiple choice options)
+            if (vocabulary.length < 4) {
+                console.log('Random Practice: Not enough vocabulary (needs 4+)');
                 return;
             }
 
@@ -138,24 +138,48 @@ function triggerQuizInActiveTab(specificTabId = null) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'fetchDefinition') {
-        const word = request.word.toLowerCase();
-        const url = `https://www.oxfordlearnersdictionaries.com/definition/english/${word}`;
+        const rawWord = request.word;
+        // Basic cleaning: trim whitespace and convert to lowercase
+        const word = rawWord.trim().toLowerCase();
 
-        fetch(url)
+        const directUrl = `https://www.oxfordlearnersdictionaries.com/definition/english/${word}`;
+        const searchUrl = `https://www.oxfordlearnersdictionaries.com/search/english/?q=${encodeURIComponent(word)}`;
+
+        // Helper to check if a response page is actually a search result list (meaning no exact match/redirect)
+        // Note: Oxford usually redirects "search?q=governments" to ".../definition/english/government"
+
+        // 1. Try Direct URL
+        fetch(directUrl)
+            .then(response => {
+                if (response.ok) return response;
+                // 2. If 404, try Search URL (handles plurals/conjugations)
+                if (response.status === 404) {
+                    console.log(`Direct lookup failed for ${word}, trying search fallback...`);
+                    return fetch(searchUrl);
+                }
+                throw new Error('Network response was not ok');
+            })
             .then(response => {
                 if (!response.ok) {
+                    // 3. Last resort: try appending _1 (sometimes helpful for simple homonyms)
                     if (response.status === 404) {
                         return fetch(`https://www.oxfordlearnersdictionaries.com/definition/english/${word}_1`);
                     }
                     throw new Error('Network response was not ok');
                 }
-                return response.text();
+                return response;
             })
-            .then(html => {
-                sendResponse({ success: true, html: html, finalUrl: url });
+            .then(response => {
+                // Check if we ultimately failed after fallback
+                if (!response.ok) throw new Error('Not found');
+                return Promise.all([response.text(), response.url]);
+            })
+            .then(([html, finalUrl]) => {
+                sendResponse({ success: true, html: html, finalUrl: finalUrl });
             })
             .catch(error => {
-                sendResponse({ success: false, error: error.message });
+                console.error('Fetch error:', error);
+                sendResponse({ success: false, error: 'Definition not found' });
             });
 
         return true; // Will respond asynchronously

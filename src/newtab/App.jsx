@@ -502,8 +502,8 @@ export default function App() {
                                     <button
                                         onClick={toggleRandomPractice}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all text-sm ${randomPracticeEnabled
-                                                ? 'bg-blue-100 text-blue-700 shadow-sm'
-                                                : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                            ? 'bg-blue-100 text-blue-700 shadow-sm'
+                                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
                                             }`}
                                     >
                                         <Power size={16} />
@@ -573,17 +573,17 @@ export default function App() {
                     onClick={closeAddModal}
                 >
                     <div
-                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative"
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden relative"
                         onClick={e => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="bg-oxford-blue text-white px-6 py-4 flex justify-between items-center">
+                        <div className="bg-oxford-blue text-white px-6 py-4 flex justify-between items-center shrink-0">
                             <h3 className="text-lg font-bold">Word Lookup</h3>
                             <button onClick={closeAddModal} className="hover:text-red-200 transition-colors"><Plus className="rotate-45" size={24} /></button>
                         </div>
 
                         {/* Body */}
-                        <div className="p-6">
+                        <div className="p-6 overflow-y-auto custom-scrollbar">
                             {isSearching ? (
                                 <div className="py-12 flex flex-col items-center justify-center text-gray-400">
                                     <Loader2 className="animate-spin mb-3 text-oxford-blue" size={32} />

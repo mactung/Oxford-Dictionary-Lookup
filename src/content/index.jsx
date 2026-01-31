@@ -34,7 +34,7 @@ function getHost() {
         styleLink.rel = 'stylesheet';
         // Double check runtime before access (though checked above)
         if (chrome.runtime?.getURL) {
-            styleLink.href = chrome.runtime.getURL('assets/newtab.css');
+            styleLink.href = chrome.runtime.getURL('assets/index.css');
             shadowRoot.appendChild(styleLink);
         }
 
