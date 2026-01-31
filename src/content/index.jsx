@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import Popup from './Popup';
+import RandomQuizOverlay from './RandomQuizOverlay';
 
 const HOST_ID = 'oxford-lookup-host';
 
@@ -22,6 +23,8 @@ function getHost() {
         host.style.zIndex = '2147483647';
         host.style.top = '0px';
         host.style.left = '0px';
+        // host.style.width = '0px'; // Minimize impact
+        // host.style.height = '0px';
         document.body.appendChild(host);
 
         shadowRoot = host.attachShadow({ mode: 'open' });
@@ -104,12 +107,51 @@ const mountPopup = (x, y, text) => {
     const hostData = getHost();
     if (!hostData) {
         console.warn("Oxford Dictionary: Extension context invalidated. Please refresh the page.");
-        // Optionally alert user: alert("Please refresh the page to use the dictionary extension.");
         return;
     }
-    const { reactRoot } = hostData;
+    const { host, reactRoot } = hostData;
+    host.dataset.type = 'popup'; // Tag as popup
     reactRoot.render(<Popup x={x} y={y} word={text} onClose={removeHost} />);
 };
+
+// --- Random Quiz Logic ---
+
+const handleSnooze = (minutes) => {
+    const ms = minutes * 60 * 1000;
+    chrome.storage.local.set({ randomPracticeSnoozeUntil: Date.now() + ms });
+    removeHost();
+};
+
+const handleTurnOff = () => {
+    chrome.storage.local.set({ randomPracticeEnabled: false });
+    removeHost();
+};
+
+const mountRandomQuiz = () => {
+    const hostData = getHost();
+    if (!hostData) return;
+    const { host, reactRoot } = hostData;
+    
+    host.dataset.type = 'quiz'; // Tag as quiz
+    
+    reactRoot.render(
+        <RandomQuizOverlay 
+            onClose={removeHost} 
+            onSnooze={handleSnooze} 
+            onTurnOff={handleTurnOff} 
+        />
+    );
+};
+
+// --- Message Listening ---
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'triggerRandomQuiz') {
+        mountRandomQuiz();
+        sendResponse({ success: true });
+    }
+    return true;
+});
+
 
 // Event Listeners
 document.addEventListener('mouseup', (e) => {
@@ -128,19 +170,17 @@ document.addEventListener('mouseup', (e) => {
             const x = rect.left + window.scrollX + (rect.width / 2);
             const y = rect.top + window.scrollY;
 
-            // Remove any generic existing popup
-            // removeHost(); 
-
             createIcon(x, y, text);
         } else {
             // Clicked clear
             if (iconElement) iconElement.remove();
             iconElement = null;
-            // Don't close popup immediately if interacting with it? 
-            // We use a ClickOutside listener in React instead usually but this is global.
-            // If we clicked outside the host, remove host.
+            
+            // Close Popup on outside click, but KEEP Quiz open
             if (host && !host.contains(e.target)) {
-                removeHost();
+                if (host.dataset.type === 'popup') {
+                    removeHost();
+                }
             }
         }
     }, 10);
@@ -251,6 +291,9 @@ function highlightSavedWords() {
 highlightSavedWords();
 
 chrome.storage.onChanged.addListener((changes, namespace) => {
+    // If enabled status changes, we might want to kill the quiz? 
+    // Usually user changes it in New Tab, so background handles it.
+    
     if (namespace === 'local' && changes.vocabulary) {
         // Re-run highlighting? 
         // Ideally we only add new ones, but re-running is safer for sync

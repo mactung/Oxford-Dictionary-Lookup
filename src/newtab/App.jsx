@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award, Plus, Loader2, Check } from 'lucide-react';
+import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award, Plus, Loader2, Check, Settings, Clock, Power } from 'lucide-react';
 import { parseOxfordHTML } from '../utils/parser';
 
 import Quiz from './Quiz';
@@ -25,8 +25,12 @@ export default function App() {
     const [selectedFolderId, setSelectedFolderId] = useState(null);
     const [folderBookmarks, setFolderBookmarks] = useState([]);
 
+    // Random Practice State
+    const [randomPracticeEnabled, setRandomPracticeEnabled] = useState(false);
+    const [randomPracticeFrequency, setRandomPracticeFrequency] = useState(60); // minutes
+
     useEffect(() => {
-        chrome.storage.local.get(['vocabulary'], (result) => {
+        chrome.storage.local.get(['vocabulary', 'randomPracticeEnabled', 'randomPracticeFrequency'], (result) => {
             if (result.vocabulary) {
                 // Filter out corrupted items (missing headword) to prevent crashes
                 const validVocab = result.vocabulary.filter(item => item && item.headword);
@@ -39,6 +43,10 @@ export default function App() {
                     chrome.storage.local.set({ vocabulary: validVocab });
                 }
             }
+
+            // Load Random Practice Settings
+            if (result.randomPracticeEnabled !== undefined) setRandomPracticeEnabled(result.randomPracticeEnabled);
+            if (result.randomPracticeFrequency !== undefined) setRandomPracticeFrequency(result.randomPracticeFrequency);
         });
 
         // Load saved folder selection
@@ -81,6 +89,31 @@ export default function App() {
             setFolderBookmarks([]);
         }
     }, [selectedFolderId]);
+
+    // Save Random Practice Settings
+    const toggleRandomPractice = () => {
+        const newValue = !randomPracticeEnabled;
+        setRandomPracticeEnabled(newValue);
+        chrome.storage.local.set({ randomPracticeEnabled: newValue });
+        
+        // Also update alarm immediately if possible (background script handles alarm on storage change typically, 
+        // but we might need to notify it or let it observe storage)
+        // We will implement storage listener in background script.
+    };
+
+    const changeFrequency = (minutes) => {
+        const val = parseInt(minutes);
+        setRandomPracticeFrequency(val);
+        const updates = { randomPracticeFrequency: val };
+        
+        // If switching to test mode (1 min), reset timer to trigger sooner
+        if (val === 1) {
+            updates.randomPracticeLastTime = 0;
+            updates.randomPracticeSnoozeUntil = 0;
+        }
+        
+        chrome.storage.local.set(updates);
+    };
 
     const deleteWord = (headword, e) => {
         e.stopPropagation();
@@ -415,7 +448,6 @@ export default function App() {
                                 color="bg-green-500"
                             />
                         </div>
-
                         {/* Call to Action */}
                         <div className="bg-oxford-blue rounded-3xl p-8 text-white relative overflow-hidden shadow-xl group cursor-pointer transition-transform hover:scale-[1.01]" onClick={() => setIsQuizActive(true)}>
                             <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -434,6 +466,52 @@ export default function App() {
                             {/* Decorative background circles */}
                             <div className="absolute top-0 right-0 -mt-10 -mr-10 w-64 h-64 bg-white opacity-5 rounded-full pointer-events-none"></div>
                             <div className="absolute bottom-0 left-0 -mb-10 -ml-10 w-40 h-40 bg-blue-500 opacity-20 rounded-full blur-2xl pointer-events-none"></div>
+                        </div>
+
+                        {/* Settings: Random Practice */}
+                         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                                <div>
+                                    <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-1">
+                                        <Brain size={20} className="text-blue-500" />
+                                        Random Practice Mode
+                                    </h2>
+                                    <p className="text-gray-500 text-sm max-w-md">
+                                        Occasionally show a quick quiz while you browse the web to reinforce your memory.
+                                    </p>
+                                </div>
+                                
+                                <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-xl">
+                                    {randomPracticeEnabled && (
+                                        <div className="flex items-center gap-2 mr-2">
+                                            <Clock size={16} className="text-gray-400" />
+                                            <select 
+                                                value={randomPracticeFrequency}
+                                                onChange={(e) => changeFrequency(e.target.value)}
+                                                className="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer"
+                                            >
+                                                <option value="1">Every 1 min (Test)</option>
+                                                <option value="30">Every 30 mins</option>
+                                                <option value="60">Every 1 hour</option>
+                                                <option value="120">Every 2 hours</option>
+                                                <option value="240">Every 4 hours</option>
+                                            </select>
+                                        </div>
+                                    )}
+
+                                    <button 
+                                        onClick={toggleRandomPractice}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all text-sm ${
+                                            randomPracticeEnabled 
+                                            ? 'bg-blue-100 text-blue-700 shadow-sm' 
+                                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                        }`}
+                                    >
+                                        <Power size={16} />
+                                        {randomPracticeEnabled ? 'Enabled' : 'Disabled'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}

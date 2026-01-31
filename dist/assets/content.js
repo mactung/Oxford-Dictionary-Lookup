@@ -7017,8 +7017,57 @@
    * This source code is licensed under the ISC license.
    * See the LICENSE file in the root directory of this source tree.
    */
+  const Brain = createLucideIcon("Brain", [
+    [
+      "path",
+      {
+        d: "M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96.44 2.5 2.5 0 0 1-2.96-3.08 3 3 0 0 1-.34-5.58 2.5 2.5 0 0 1 1.32-4.24 2.5 2.5 0 0 1 1.98-3A2.5 2.5 0 0 1 9.5 2Z",
+        key: "1mhkh5"
+      }
+    ],
+    [
+      "path",
+      {
+        d: "M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96.44 2.5 2.5 0 0 0 2.96-3.08 3 3 0 0 0 .34-5.58 2.5 2.5 0 0 0-1.32-4.24 2.5 2.5 0 0 0-1.98-3A2.5 2.5 0 0 0 14.5 2Z",
+        key: "1d6s00"
+      }
+    ]
+  ]);
+  /**
+   * @license lucide-react v0.300.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */
+  const Check = createLucideIcon("Check", [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]]);
+  /**
+   * @license lucide-react v0.300.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */
+  const Clock = createLucideIcon("Clock", [
+    ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+    ["polyline", { points: "12 6 12 12 16 14", key: "68esgv" }]
+  ]);
+  /**
+   * @license lucide-react v0.300.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */
   const Loader2 = createLucideIcon("Loader2", [
     ["path", { d: "M21 12a9 9 0 1 1-6.219-8.56", key: "13zald" }]
+  ]);
+  /**
+   * @license lucide-react v0.300.0 - ISC
+   *
+   * This source code is licensed under the ISC license.
+   * See the LICENSE file in the root directory of this source tree.
+   */
+  const Power = createLucideIcon("Power", [
+    ["path", { d: "M12 2v10", key: "mnfbl" }],
+    ["path", { d: "M18.4 6.6a9 9 0 1 1-12.77.04", key: "obofu9" }]
   ]);
   /**
    * @license lucide-react v0.300.0 - ISC
@@ -7220,6 +7269,188 @@
       }
     );
   }
+  function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
+    var _a, _b;
+    const [vocabulary, setVocabulary] = reactExports.useState([]);
+    const [questions, setQuestions] = reactExports.useState([]);
+    const [currentIndex, setCurrentIndex] = reactExports.useState(0);
+    const [score, setScore] = reactExports.useState(0);
+    const [showResult, setShowResult] = reactExports.useState(false);
+    const [feedback, setFeedback] = reactExports.useState(null);
+    reactExports.useEffect(() => {
+      chrome.storage.local.get(["vocabulary"], (result) => {
+        if (result.vocabulary) {
+          setVocabulary(result.vocabulary);
+          generateQuestions(result.vocabulary);
+        }
+      });
+    }, []);
+    const generateQuestions = (vocab) => {
+      if (!vocab || vocab.length < 3) return;
+      const now = Date.now();
+      let candidates = vocab.filter((w2) => !w2.nextReview || w2.nextReview <= now);
+      if (candidates.length < 3) {
+        const others = vocab.filter((w2) => !candidates.includes(w2));
+        candidates = [...candidates, ...others].slice(0, 3);
+      } else {
+        candidates = candidates.sort(() => 0.5 - Math.random()).slice(0, 3);
+      }
+      const newQuestions = candidates.map((word) => {
+        var _a2, _b2;
+        const definition = ((_b2 = (_a2 = word.senses) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.definition) || "No definition";
+        const otherWords = vocab.filter((w2) => w2.headword !== word.headword);
+        const distractors = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map((w2) => {
+          var _a3, _b3;
+          return ((_b3 = (_a3 = w2.senses) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.definition) || "No def";
+        });
+        const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
+        return {
+          wordObj: word,
+          type: "meaning",
+          prompt: word.headword,
+          correctAnswer: definition,
+          options
+        };
+      });
+      setQuestions(newQuestions);
+    };
+    const handleAnswer = (option) => {
+      if (feedback) return;
+      const currentQ2 = questions[currentIndex];
+      const isCorrect = option === currentQ2.correctAnswer;
+      if (isCorrect) {
+        setScore((prev) => prev + 1);
+        setFeedback("correct");
+        updateWordProgress(currentQ2.wordObj, true);
+      } else {
+        setFeedback("incorrect");
+        updateWordProgress(currentQ2.wordObj, false);
+      }
+      setTimeout(() => {
+        if (currentIndex + 1 < questions.length) {
+          setCurrentIndex((prev) => prev + 1);
+          setFeedback(null);
+        } else {
+          setShowResult(true);
+        }
+      }, 1500);
+    };
+    const updateWordProgress = (word, isCorrect) => {
+      const newLevel = isCorrect ? (word.srsLevel || 0) + 1 : 0;
+      const days = 24 * 60 * 60 * 1e3;
+      let nextReview = Date.now();
+      if (newLevel === 0) nextReview += 1 * days;
+      else if (newLevel === 1) nextReview += 3 * days;
+      else if (newLevel === 2) nextReview += 7 * days;
+      else if (newLevel === 3) nextReview += 14 * days;
+      else nextReview += newLevel * 7 * days;
+      const updatedWord = { ...word, srsLevel: newLevel, nextReview };
+      chrome.storage.local.get(["vocabulary"], (result) => {
+        const currentVocab = result.vocabulary || [];
+        const newVocab = currentVocab.map((w2) => w2.headword === word.headword ? updatedWord : w2);
+        chrome.storage.local.set({ vocabulary: newVocab });
+      });
+    };
+    const playAudio = (url) => {
+      if (url) new Audio(url).play();
+    };
+    if (questions.length === 0) {
+      return null;
+    }
+    if (showResult) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed top-4 right-4 z-[999999] w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-6 animate-fade-in font-sans", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Brain, { size: 24 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold text-gray-800 mb-2", children: "Practice Complete!" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-gray-600 mb-6", children: [
+          "You got ",
+          score,
+          "/",
+          questions.length,
+          " correct."
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: onClose,
+            className: "w-full bg-oxford-blue text-white py-2 rounded-lg font-bold hover:bg-blue-800 transition-colors",
+            children: "Close"
+          }
+        ),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-4 flex justify-between text-xs text-gray-400", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(60), className: "hover:text-gray-600 underline", children: "Snooze 1h" }) })
+      ] }) });
+    }
+    const currentQ = questions[currentIndex];
+    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed top-4 right-4 z-[999999] w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden font-sans animate-slide-in", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-oxford-blue px-4 py-3 flex items-center justify-between", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-white", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Brain, { size: 18 }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-sm", children: "Quick Review" })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "group relative", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "text-blue-200 hover:text-white transition-colors p-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 16 }) }),
+            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-full mt-2 w-32 bg-white rounded-lg shadow-xl py-1 hidden group-hover:block border border-gray-100", children: [
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(30), className: "block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50", children: "Snooze 30m" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(60), className: "block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50", children: "Snooze 1h" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(180), className: "block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50", children: "Snooze 3h" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-gray-100 my-1" }),
+              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onTurnOff, className: "block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-1", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx(Power, { size: 12 }),
+                " Turn Off"
+              ] })
+            ] })
+          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "text-white/60 hover:text-white transition-colors p-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 18 }) })
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-1 bg-gray-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
+        "div",
+        {
+          className: "h-full bg-blue-500 transition-all duration-300",
+          style: { width: `${currentIndex / questions.length * 100}%` }
+        }
+      ) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 block", children: "Definition of:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-bold text-oxford-blue", children: currentQ.prompt }),
+            ((_b = (_a = currentQ.wordObj.phonetics) == null ? void 0 : _a[0]) == null ? void 0 : _b.audioUrl) && /* @__PURE__ */ jsxRuntimeExports.jsx(
+              "button",
+              {
+                onClick: () => playAudio(currentQ.wordObj.phonetics[0].audioUrl),
+                className: "w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors",
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { size: 16 })
+              }
+            )
+          ] })
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: currentQ.options.map((option, idx) => {
+          let btnClass = "w-full text-left p-3 rounded-xl border text-sm transition-all duration-200 relative ";
+          const isCorrect = option === currentQ.correctAnswer;
+          if (feedback) {
+            if (isCorrect) btnClass += "bg-green-50 border-green-500 text-green-900";
+            else btnClass += "bg-white border-gray-100 text-gray-400 opacity-50";
+          } else {
+            btnClass += "bg-white border-gray-200 hover:border-oxford-blue hover:bg-blue-50/50 hover:text-oxford-blue text-gray-600";
+          }
+          return /* @__PURE__ */ jsxRuntimeExports.jsxs(
+            "button",
+            {
+              onClick: () => handleAnswer(option),
+              disabled: !!feedback,
+              className: btnClass,
+              children: [
+                option,
+                feedback && isCorrect && /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 16, className: "absolute right-3 top-1/2 -translate-y-1/2 text-green-600" })
+              ]
+            },
+            idx
+          );
+        }) })
+      ] })
+    ] });
+  }
   const HOST_ID = "oxford-lookup-host";
   let shadowRoot = null;
   let reactRoot = null;
@@ -7300,9 +7531,42 @@
       console.warn("Oxford Dictionary: Extension context invalidated. Please refresh the page.");
       return;
     }
-    const { reactRoot: reactRoot2 } = hostData;
+    const { host, reactRoot: reactRoot2 } = hostData;
+    host.dataset.type = "popup";
     reactRoot2.render(/* @__PURE__ */ jsxRuntimeExports.jsx(Popup, { x: x2, y: y2, word: text, onClose: removeHost }));
   };
+  const handleSnooze = (minutes) => {
+    const ms = minutes * 60 * 1e3;
+    chrome.storage.local.set({ randomPracticeSnoozeUntil: Date.now() + ms });
+    removeHost();
+  };
+  const handleTurnOff = () => {
+    chrome.storage.local.set({ randomPracticeEnabled: false });
+    removeHost();
+  };
+  const mountRandomQuiz = () => {
+    const hostData = getHost();
+    if (!hostData) return;
+    const { host, reactRoot: reactRoot2 } = hostData;
+    host.dataset.type = "quiz";
+    reactRoot2.render(
+      /* @__PURE__ */ jsxRuntimeExports.jsx(
+        RandomQuizOverlay,
+        {
+          onClose: removeHost,
+          onSnooze: handleSnooze,
+          onTurnOff: handleTurnOff
+        }
+      )
+    );
+  };
+  chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "triggerRandomQuiz") {
+      mountRandomQuiz();
+      sendResponse({ success: true });
+    }
+    return true;
+  });
   document.addEventListener("mouseup", (e) => {
     const host = document.getElementById(HOST_ID);
     if (host && host.contains(e.target)) return;
@@ -7319,7 +7583,9 @@
         if (iconElement) iconElement.remove();
         iconElement = null;
         if (host && !host.contains(e.target)) {
-          removeHost();
+          if (host.dataset.type === "popup") {
+            removeHost();
+          }
         }
       }
     }, 10);
