@@ -42,20 +42,32 @@ export default function Popup({ x, y, word, onClose }) {
 
     const handleSave = () => {
         if (!data || !data.headword) return;
-        setSaved(true);
+
+        // Optimistic toggle
+        const newSavedState = !saved;
+        setSaved(newSavedState);
 
         chrome.storage.local.get(['vocabulary'], (result) => {
             const vocabulary = result.vocabulary || [];
             const exists = vocabulary.some(item => item.headword === data.headword);
-            if (!exists) {
-                const newVocab = [...vocabulary, {
+
+            let newVocab;
+            if (newSavedState && !exists) {
+                // Add
+                newVocab = [...vocabulary, {
                     ...data,
                     contextUrl: window.location.href,
                     srsLevel: 0,
                     nextReview: Date.now()
                 }];
-                chrome.storage.local.set({ vocabulary: newVocab });
+            } else if (!newSavedState && exists) {
+                // Remove
+                newVocab = vocabulary.filter(item => item.headword !== data.headword);
+            } else {
+                return; // State matches
             }
+
+            chrome.storage.local.set({ vocabulary: newVocab });
         });
     };
 

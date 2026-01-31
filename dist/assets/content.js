@@ -7065,16 +7065,6 @@
    * This source code is licensed under the ISC license.
    * See the LICENSE file in the root directory of this source tree.
    */
-  const Power = createLucideIcon("Power", [
-    ["path", { d: "M12 2v10", key: "mnfbl" }],
-    ["path", { d: "M18.4 6.6a9 9 0 1 1-12.77.04", key: "obofu9" }]
-  ]);
-  /**
-   * @license lucide-react v0.300.0 - ISC
-   *
-   * This source code is licensed under the ISC license.
-   * See the LICENSE file in the root directory of this source tree.
-   */
   const Star = createLucideIcon("Star", [
     [
       "polygon",
@@ -7118,16 +7108,21 @@
     }
     const headword = ((_a = entry.querySelector(".headword")) == null ? void 0 : _a.textContent) || "";
     const pos = ((_b = entry.querySelector(".pos")) == null ? void 0 : _b.textContent) || "";
-    const phonetics = [];
+    const allPhonetics = [];
     entry.querySelectorAll(".phonetics > div").forEach((div) => {
       var _a2, _b2;
       const type = div.classList.contains("phons_br") ? "BrE" : div.classList.contains("phons_n_am") ? "NAmE" : "";
       const ipa = ((_a2 = div.querySelector(".phon")) == null ? void 0 : _a2.textContent) || "";
       const audioUrl = (_b2 = div.querySelector(".sound")) == null ? void 0 : _b2.getAttribute("data-src-mp3");
-      if (ipa || audioUrl) {
-        phonetics.push({ type, ipa, audioUrl });
+      if ((ipa || audioUrl) && type) {
+        allPhonetics.push({ type, ipa, audioUrl });
       }
     });
+    const phonetics = [];
+    const bre = allPhonetics.find((p2) => p2.type === "BrE");
+    const name = allPhonetics.find((p2) => p2.type === "NAmE");
+    if (bre) phonetics.push(bre);
+    if (name) phonetics.push(name);
     const senses = [];
     const senseElements = doc.querySelectorAll(".sense");
     senseElements.forEach((sense) => {
@@ -7138,14 +7133,38 @@
         sense.querySelectorAll(".x").forEach((x2) => {
           examples.push(x2.textContent);
         });
-        senses.push({ definition: def, examples });
+        const synonyms = [];
+        sense.querySelectorAll(".xr_s").forEach((syn) => {
+          var _a3;
+          let text = (_a3 = syn.textContent) == null ? void 0 : _a3.trim();
+          if (text) synonyms.push(text);
+        });
+        if (synonyms.length === 0) {
+          sense.querySelectorAll(".syn, .xr").forEach((el2) => {
+            if (el2.textContent.includes("synonym")) {
+              const clean = el2.textContent.replace("synonym", "").trim();
+              if (clean) synonyms.push(clean);
+            }
+          });
+        }
+        senses.push({ definition: def, examples, synonyms });
+      }
+    });
+    const idioms = [];
+    entry.querySelectorAll(".idm-g").forEach((idmBlock) => {
+      var _a2, _b2, _c, _d;
+      const phrase = (_b2 = (_a2 = idmBlock.querySelector(".idm")) == null ? void 0 : _a2.textContent) == null ? void 0 : _b2.trim();
+      const def = (_d = (_c = idmBlock.querySelector(".def")) == null ? void 0 : _c.textContent) == null ? void 0 : _d.trim();
+      if (phrase && def) {
+        idioms.push({ phrase, definition: def });
       }
     });
     return {
       headword,
       pos,
       phonetics,
-      senses
+      senses,
+      idioms
     };
   }
   function Popup({ x: x2, y: y2, word, onClose }) {
@@ -7184,19 +7203,25 @@
     };
     const handleSave = () => {
       if (!data || !data.headword) return;
-      setSaved(true);
+      const newSavedState = !saved;
+      setSaved(newSavedState);
       chrome.storage.local.get(["vocabulary"], (result) => {
         const vocabulary = result.vocabulary || [];
         const exists = vocabulary.some((item) => item.headword === data.headword);
-        if (!exists) {
-          const newVocab = [...vocabulary, {
+        let newVocab;
+        if (newSavedState && !exists) {
+          newVocab = [...vocabulary, {
             ...data,
             contextUrl: window.location.href,
             srsLevel: 0,
             nextReview: Date.now()
           }];
-          chrome.storage.local.set({ vocabulary: newVocab });
+        } else if (!newSavedState && exists) {
+          newVocab = vocabulary.filter((item) => item.headword !== data.headword);
+        } else {
+          return;
         }
+        chrome.storage.local.set({ vocabulary: newVocab });
       });
     };
     return /* @__PURE__ */ jsxRuntimeExports.jsxs(
@@ -7286,33 +7311,37 @@
       });
     }, []);
     const generateQuestions = (vocab) => {
-      if (!vocab || vocab.length < 3) return;
+      var _a2, _b2;
+      console.log("RandomQuizOverlay: Generating questions from vocab size", vocab.length);
+      if (!vocab || vocab.length < 1) {
+        console.log("RandomQuizOverlay: Not enough vocab");
+        return;
+      }
       const now = Date.now();
       let candidates = vocab.filter((w2) => !w2.nextReview || w2.nextReview <= now);
-      if (candidates.length < 3) {
-        const others = vocab.filter((w2) => !candidates.includes(w2));
-        candidates = [...candidates, ...others].slice(0, 3);
-      } else {
-        candidates = candidates.sort(() => 0.5 - Math.random()).slice(0, 3);
+      if (candidates.length === 0) {
+        candidates = vocab;
       }
-      const newQuestions = candidates.map((word) => {
-        var _a2, _b2;
-        const definition = ((_b2 = (_a2 = word.senses) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.definition) || "No definition";
-        const otherWords = vocab.filter((w2) => w2.headword !== word.headword);
-        const distractors = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map((w2) => {
-          var _a3, _b3;
-          return ((_b3 = (_a3 = w2.senses) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.definition) || "No def";
-        });
-        const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
-        return {
-          wordObj: word,
-          type: "meaning",
-          prompt: word.headword,
-          correctAnswer: definition,
-          options
-        };
+      const word = candidates[Math.floor(Math.random() * candidates.length)];
+      const definition = ((_b2 = (_a2 = word.senses) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.definition) || "No definition";
+      const otherWords = vocab.filter((w2) => w2.headword !== word.headword);
+      let distractors = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map((w2) => {
+        var _a3, _b3;
+        return ((_b3 = (_a3 = w2.senses) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.definition) || "No def";
       });
-      setQuestions(newQuestions);
+      while (distractors.length < 3) {
+        distractors.push("Random Wrong Definition " + Math.floor(Math.random() * 100));
+      }
+      const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
+      const question = {
+        wordObj: word,
+        type: "meaning",
+        prompt: word.headword,
+        correctAnswer: definition,
+        options
+      };
+      console.log("RandomQuizOverlay: Question set", question);
+      setQuestions([question]);
     };
     const handleAnswer = (option) => {
       if (feedback) return;
@@ -7321,35 +7350,12 @@
       if (isCorrect) {
         setScore((prev) => prev + 1);
         setFeedback("correct");
-        updateWordProgress(currentQ2.wordObj, true);
       } else {
         setFeedback("incorrect");
-        updateWordProgress(currentQ2.wordObj, false);
       }
       setTimeout(() => {
-        if (currentIndex + 1 < questions.length) {
-          setCurrentIndex((prev) => prev + 1);
-          setFeedback(null);
-        } else {
-          setShowResult(true);
-        }
-      }, 1500);
-    };
-    const updateWordProgress = (word, isCorrect) => {
-      const newLevel = isCorrect ? (word.srsLevel || 0) + 1 : 0;
-      const days = 24 * 60 * 60 * 1e3;
-      let nextReview = Date.now();
-      if (newLevel === 0) nextReview += 1 * days;
-      else if (newLevel === 1) nextReview += 3 * days;
-      else if (newLevel === 2) nextReview += 7 * days;
-      else if (newLevel === 3) nextReview += 14 * days;
-      else nextReview += newLevel * 7 * days;
-      const updatedWord = { ...word, srsLevel: newLevel, nextReview };
-      chrome.storage.local.get(["vocabulary"], (result) => {
-        const currentVocab = result.vocabulary || [];
-        const newVocab = currentVocab.map((w2) => w2.headword === word.headword ? updatedWord : w2);
-        chrome.storage.local.set({ vocabulary: newVocab });
-      });
+        setShowResult(true);
+      }, 1e3);
     };
     const playAudio = (url) => {
       if (url) new Audio(url).play();
@@ -7357,82 +7363,75 @@
     if (questions.length === 0) {
       return null;
     }
+    const FooterActions = () => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-6 flex flex-col gap-3 border-t border-gray-100 pt-4", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex items-center justify-between text-xs text-gray-500 mb-2", children: /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Busy? Snooze for later:" }) }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "grid grid-cols-3 gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => onSnooze(30), className: "py-2 px-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 12 }),
+          " 30m"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => onSnooze(60), className: "py-2 px-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 12 }),
+          " 1h"
+        ] }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: () => onSnooze(180), className: "py-2 px-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 12 }),
+          " 3h"
+        ] })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onTurnOff, className: "mt-2 text-xs text-red-400 hover:text-red-500 hover:underline text-center w-full", children: "Turn off Random Practice" })
+    ] });
     if (showResult) {
-      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed top-4 right-4 z-[999999] w-80 bg-white rounded-xl shadow-2xl border border-gray-200 p-6 animate-fade-in font-sans", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Brain, { size: 24 }) }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold text-gray-800 mb-2", children: "Practice Complete!" }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "text-gray-600 mb-6", children: [
-          "You got ",
-          score,
-          "/",
-          questions.length,
-          " correct."
+      return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans", children: /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-full max-w-sm relative animate-scale-up", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-center", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: `w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${feedback === "correct" ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"}`, children: feedback === "correct" ? /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 32 }) : /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 32 }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "text-xl font-bold text-gray-800 mb-2", children: feedback === "correct" ? "Excellent!" : "Needs Review" }),
+        feedback !== "correct" && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-4 bg-red-50 p-3 rounded-lg text-sm text-red-800", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: "Correct Meaning:" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("br", {}),
+          questions[0].correctAnswer
         ] }),
         /* @__PURE__ */ jsxRuntimeExports.jsx(
           "button",
           {
             onClick: onClose,
-            className: "w-full bg-oxford-blue text-white py-2 rounded-lg font-bold hover:bg-blue-800 transition-colors",
-            children: "Close"
+            className: "w-full bg-oxford-blue text-white py-3 rounded-xl font-bold hover:bg-blue-800 transition-colors shadow-lg shadow-blue-900/10",
+            children: "Continue Browsing"
           }
-        ),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "mt-4 flex justify-between text-xs text-gray-400", children: /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(60), className: "hover:text-gray-600 underline", children: "Snooze 1h" }) })
-      ] }) });
+        )
+      ] }) }) });
     }
     const currentQ = questions[currentIndex];
-    return /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "fixed top-4 right-4 z-[999999] w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden font-sans animate-slide-in", children: [
-      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-oxford-blue px-4 py-3 flex items-center justify-between", children: [
+    return /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "fixed inset-0 z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans", children: /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md relative animate-slide-up", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "bg-oxford-blue px-6 py-4 flex items-center justify-between", children: [
         /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 text-white", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx(Brain, { size: 18 }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-sm", children: "Quick Review" })
+          /* @__PURE__ */ jsxRuntimeExports.jsx(Brain, { size: 20, className: "text-blue-300" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-base", children: "Quick Vocabulary Check" })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "group relative", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("button", { className: "text-blue-200 hover:text-white transition-colors p-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(Clock, { size: 16 }) }),
-            /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "absolute right-0 top-full mt-2 w-32 bg-white rounded-lg shadow-xl py-1 hidden group-hover:block border border-gray-100", children: [
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(30), className: "block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50", children: "Snooze 30m" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(60), className: "block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50", children: "Snooze 1h" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: () => onSnooze(180), className: "block w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50", children: "Snooze 3h" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "border-t border-gray-100 my-1" }),
-              /* @__PURE__ */ jsxRuntimeExports.jsxs("button", { onClick: onTurnOff, className: "block w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 flex items-center gap-1", children: [
-                /* @__PURE__ */ jsxRuntimeExports.jsx(Power, { size: 12 }),
-                " Turn Off"
-              ] })
-            ] })
-          ] }),
-          /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "text-white/60 hover:text-white transition-colors p-1", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 18 }) })
-        ] })
+        /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: onClose, className: "text-white/60 hover:text-white transition-colors bg-white/10 hover:bg-white/20 p-1.5 rounded-full", children: /* @__PURE__ */ jsxRuntimeExports.jsx(X, { size: 16 }) })
       ] }),
-      /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "h-1 bg-gray-100", children: /* @__PURE__ */ jsxRuntimeExports.jsx(
-        "div",
-        {
-          className: "h-full bg-blue-500 transition-all duration-300",
-          style: { width: `${currentIndex / questions.length * 100}%` }
-        }
-      ) }),
       /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "p-6", children: [
-        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-gray-400 uppercase tracking-widest mb-1 block", children: "Definition of:" }),
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between", children: [
-            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-2xl font-bold text-oxford-blue", children: currentQ.prompt }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mb-6 text-center", children: [
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 block", children: "Choose the correct meaning" }),
+          /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-center gap-3 mb-2", children: [
+            /* @__PURE__ */ jsxRuntimeExports.jsx("h2", { className: "text-3xl font-bold text-oxford-blue", children: currentQ.prompt }),
             ((_b = (_a = currentQ.wordObj.phonetics) == null ? void 0 : _a[0]) == null ? void 0 : _b.audioUrl) && /* @__PURE__ */ jsxRuntimeExports.jsx(
               "button",
               {
                 onClick: () => playAudio(currentQ.wordObj.phonetics[0].audioUrl),
-                className: "w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors",
-                children: /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { size: 16 })
+                className: "w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-100 transition-colors ring-4 ring-blue-50/50",
+                children: /* @__PURE__ */ jsxRuntimeExports.jsx(Volume2, { size: 20 })
               }
             )
           ] })
         ] }),
-        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-2", children: currentQ.options.map((option, idx) => {
-          let btnClass = "w-full text-left p-3 rounded-xl border text-sm transition-all duration-200 relative ";
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: currentQ.options.map((option, idx) => {
+          let btnClass = "w-full text-left p-4 rounded-xl border text-sm transition-all duration-200 relative group ";
           const isCorrect = option === currentQ.correctAnswer;
           if (feedback) {
-            if (isCorrect) btnClass += "bg-green-50 border-green-500 text-green-900";
-            else btnClass += "bg-white border-gray-100 text-gray-400 opacity-50";
+            if (isCorrect) btnClass += "bg-green-50 border-green-500 text-green-900 font-medium";
+            else btnClass += "bg-gray-50 border-gray-100 text-gray-400 opacity-50";
           } else {
-            btnClass += "bg-white border-gray-200 hover:border-oxford-blue hover:bg-blue-50/50 hover:text-oxford-blue text-gray-600";
+            btnClass += "bg-white border-gray-200 hover:border-blue-400 hover:bg-blue-50/30 hover:shadow-md hover:-translate-y-0.5 text-gray-700";
           }
           return /* @__PURE__ */ jsxRuntimeExports.jsxs(
             "button",
@@ -7441,15 +7440,17 @@
               disabled: !!feedback,
               className: btnClass,
               children: [
-                option,
-                feedback && isCorrect && /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 16, className: "absolute right-3 top-1/2 -translate-y-1/2 text-green-600" })
+                /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "mr-6 block leading-snug", children: option }),
+                feedback && isCorrect && /* @__PURE__ */ jsxRuntimeExports.jsx(Check, { size: 20, className: "absolute right-4 top-1/2 -translate-y-1/2 text-green-600" }),
+                !feedback && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full border-2 border-gray-200 group-hover:border-blue-400" })
               ]
             },
             idx
           );
-        }) })
+        }) }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(FooterActions, {})
       ] })
-    ] });
+    ] }) });
   }
   const HOST_ID = "oxford-lookup-host";
   let shadowRoot = null;
@@ -7545,10 +7546,15 @@
     removeHost();
   };
   const mountRandomQuiz = () => {
+    console.log("Content Script: mountRandomQuiz called");
     const hostData = getHost();
-    if (!hostData) return;
+    if (!hostData) {
+      console.error("Content Script: Failed to get host data");
+      return;
+    }
     const { host, reactRoot: reactRoot2 } = hostData;
     host.dataset.type = "quiz";
+    console.log("Content Script: Rendering RandomQuizOverlay");
     reactRoot2.render(
       /* @__PURE__ */ jsxRuntimeExports.jsx(
         RandomQuizOverlay,
@@ -7562,6 +7568,7 @@
   };
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "triggerRandomQuiz") {
+      console.log("Content Script: Checked triggerRandomQuiz");
       mountRandomQuiz();
       sendResponse({ success: true });
     }

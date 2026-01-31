@@ -34,7 +34,7 @@ export default function App() {
             if (result.vocabulary) {
                 // Filter out corrupted items (missing headword) to prevent crashes
                 const validVocab = result.vocabulary.filter(item => item && item.headword);
-                
+
                 // Keep original order (Oldest -> Newest) in state
                 setVocabulary(validVocab);
 
@@ -95,7 +95,7 @@ export default function App() {
         const newValue = !randomPracticeEnabled;
         setRandomPracticeEnabled(newValue);
         chrome.storage.local.set({ randomPracticeEnabled: newValue });
-        
+
         // Also update alarm immediately if possible (background script handles alarm on storage change typically, 
         // but we might need to notify it or let it observe storage)
         // We will implement storage listener in background script.
@@ -105,13 +105,13 @@ export default function App() {
         const val = parseInt(minutes);
         setRandomPracticeFrequency(val);
         const updates = { randomPracticeFrequency: val };
-        
+
         // If switching to test mode (1 min), reset timer to trigger sooner
         if (val === 1) {
             updates.randomPracticeLastTime = 0;
             updates.randomPracticeSnoozeUntil = 0;
         }
-        
+
         chrome.storage.local.set(updates);
     };
 
@@ -403,9 +403,9 @@ export default function App() {
                                             className="bg-white p-3 rounded-xl border border-gray-100 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all flex items-center gap-3 group"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center shrink-0 group-hover:bg-blue-50 transition-colors">
-                                                <img 
+                                                <img
                                                     src={`chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(bookmark.url)}&size=32`}
-                                                    alt="" 
+                                                    alt=""
                                                     className="w-5 h-5 object-contain"
                                                     onError={(e) => { e.target.style.display = 'none'; }}
                                                 />
@@ -469,7 +469,7 @@ export default function App() {
                         </div>
 
                         {/* Settings: Random Practice */}
-                         <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+                        <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
                             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                                 <div>
                                     <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2 mb-1">
@@ -480,12 +480,12 @@ export default function App() {
                                         Occasionally show a quick quiz while you browse the web to reinforce your memory.
                                     </p>
                                 </div>
-                                
+
                                 <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-xl">
                                     {randomPracticeEnabled && (
                                         <div className="flex items-center gap-2 mr-2">
                                             <Clock size={16} className="text-gray-400" />
-                                            <select 
+                                            <select
                                                 value={randomPracticeFrequency}
                                                 onChange={(e) => changeFrequency(e.target.value)}
                                                 className="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer"
@@ -499,13 +499,12 @@ export default function App() {
                                         </div>
                                     )}
 
-                                    <button 
+                                    <button
                                         onClick={toggleRandomPractice}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all text-sm ${
-                                            randomPracticeEnabled 
-                                            ? 'bg-blue-100 text-blue-700 shadow-sm' 
-                                            : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                                        }`}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all text-sm ${randomPracticeEnabled
+                                                ? 'bg-blue-100 text-blue-700 shadow-sm'
+                                                : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                            }`}
                                     >
                                         <Power size={16} />
                                         {randomPracticeEnabled ? 'Enabled' : 'Disabled'}
@@ -623,17 +622,59 @@ export default function App() {
                                         </div>
                                     )}
 
-                                    {/* DEFINITION */}
-                                    <div className="bg-gray-50 rounded-xl p-4 mb-6 border border-gray-100">
-                                        <p className="font-medium text-gray-800 mb-2">
-                                            {searchedWordData.senses?.[0]?.definition}
-                                        </p>
-                                        {searchedWordData.senses?.[0]?.examples?.[0] && (
-                                            <p className="text-gray-500 italic text-sm pl-3 border-l-2 border-blue-200">
-                                                "{searchedWordData.senses[0].examples[0]}"
-                                            </p>
-                                        )}
+                                    {/* DETAILED DEFINITIONS */}
+                                    <div className="space-y-4 mb-6">
+                                        {searchedWordData.senses?.map((sense, idx) => (
+                                            <div key={idx} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                                                <div className="flex gap-2">
+                                                    <span className="text-oxford-blue font-bold text-sm bg-blue-100 h-6 w-6 flex items-center justify-center rounded-full shrink-0">{idx + 1}</span>
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-gray-800 mb-2 leading-relaxed">
+                                                            {sense.definition}
+                                                        </p>
+
+                                                        {/* Synonyms */}
+                                                        {sense.synonyms && sense.synonyms.length > 0 && (
+                                                            <div className="flex flex-wrap gap-2 mb-3">
+                                                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Synonyms:</span>
+                                                                {sense.synonyms.map((syn, k) => (
+                                                                    <span key={k} className="bg-white border border-gray-200 px-2 py-0.5 rounded text-xs text-gray-600 font-medium">
+                                                                        {syn}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Examples */}
+                                                        {sense.examples && sense.examples.length > 0 && (
+                                                            <ul className="text-gray-500 italic text-sm pl-3 border-l-2 border-blue-200 space-y-1">
+                                                                {sense.examples.slice(0, 3).map((ex, j) => (
+                                                                    <li key={j}>"{ex}"</li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
                                     </div>
+
+                                    {/* IDIOMS */}
+                                    {searchedWordData.idioms && searchedWordData.idioms.length > 0 && (
+                                        <div className="mb-6">
+                                            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                                <TrendingUp size={16} /> Idioms
+                                            </h3>
+                                            <div className="space-y-3">
+                                                {searchedWordData.idioms.map((idm, idx) => (
+                                                    <div key={idx} className="bg-orange-50 p-3 rounded-lg border border-orange-100">
+                                                        <p className="font-bold text-gray-800 text-sm mb-1">{idm.phrase}</p>
+                                                        <p className="text-xs text-gray-600">{idm.definition}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
 
                                     {/* ACTION BUTTON */}
                                     {searchedWordData.isExisting ? (

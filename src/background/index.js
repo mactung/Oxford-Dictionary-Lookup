@@ -37,18 +37,31 @@ function checkAndTriggerQuiz(specificTabId = null) {
     chrome.storage.local.get(
         ['randomPracticeEnabled', 'randomPracticeFrequency', 'randomPracticeLastTime', 'randomPracticeSnoozeUntil', 'vocabulary'],
         (result) => {
-            const { 
-                randomPracticeEnabled, 
-                randomPracticeFrequency = 60, 
-                randomPracticeLastTime = 0, 
+            const {
+                randomPracticeEnabled,
+                randomPracticeFrequency = 60,
+                randomPracticeLastTime = 0,
                 randomPracticeSnoozeUntil = 0,
                 vocabulary = []
             } = result;
 
-            if (!randomPracticeEnabled) return;
-            
-            // Need at least a few words to quiz
-            if (vocabulary.length < 3) return;
+            console.log('Random Practice Check:', {
+                enabled: randomPracticeEnabled,
+                vocabLength: vocabulary.length,
+                lastTime: new Date(randomPracticeLastTime),
+                snooze: new Date(randomPracticeSnoozeUntil)
+            });
+
+            if (!randomPracticeEnabled) {
+                console.log('Random Practice: Disabled');
+                return;
+            }
+
+            // Need at least a few words to quiz -> Lowered to 1 for testing
+            if (vocabulary.length < 1) {
+                console.log('Random Practice: Not enough vocabulary');
+                return;
+            }
 
             const now = Date.now();
 
@@ -67,13 +80,14 @@ function checkAndTriggerQuiz(specificTabId = null) {
             }
 
             const nextDue = randomPracticeLastTime + intervalMs;
-            
+
             if (now < nextDue) {
                 console.log('Random Practice: Not due yet. Next due:', new Date(nextDue));
                 return;
             }
 
             // Trigger Quiz
+            console.log('Random Practice: Conditions met, triggering...');
             triggerQuizInActiveTab(specificTabId);
         }
     );
@@ -82,22 +96,27 @@ function checkAndTriggerQuiz(specificTabId = null) {
 function triggerQuizInActiveTab(specificTabId = null) {
     const trigger = (tab) => {
         // Should strictly not run on sensitive pages or internal browser pages
-        if (!tab.url || tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://')) {
+        // If we don't have 'tabs' permission, tab.url might be undefined. We'll try anyway.
+        if (tab.url && (tab.url.startsWith('chrome://') || tab.url.startsWith('edge://') || tab.url.startsWith('about:') || tab.url.startsWith('chrome-extension://'))) {
+            console.log('Random Practice: Skipped invalid url', tab.url);
             return;
         }
 
         console.log('Random Practice: Triggering quiz on tab', tab.id);
 
         chrome.tabs.sendMessage(tab.id, { action: 'triggerRandomQuiz' }, (response) => {
-             // Check for errors (e.g. content script not loaded)
-             if (chrome.runtime.lastError) {
+            // Check for errors (e.g. content script not loaded)
+            if (chrome.runtime.lastError) {
                 console.log('Random Practice: Could not send message to tab (maybe no content script):', chrome.runtime.lastError.message);
                 return;
             }
 
             if (response && response.success) {
+                console.log('Random Practice: Successfully triggered on tab', tab.id);
                 // Update Last Time only if successfully triggered
                 chrome.storage.local.set({ randomPracticeLastTime: Date.now() });
+            } else {
+                console.log('Random Practice: Tab responded but failed', response);
             }
         });
     };
@@ -142,3 +161,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Will respond asynchronously
     }
 });
+
+// Make available globally for manual debugging
+self.checkAndTriggerQuiz = checkAndTriggerQuiz;
+globalThis.checkAndTriggerQuiz = checkAndTriggerQuiz;
+console.log('Random Practice: Debug function checkAndTriggerQuiz exposed');

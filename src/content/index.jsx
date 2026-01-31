@@ -128,17 +128,22 @@ const handleTurnOff = () => {
 };
 
 const mountRandomQuiz = () => {
+    console.log('Content Script: mountRandomQuiz called');
     const hostData = getHost();
-    if (!hostData) return;
+    if (!hostData) {
+        console.error('Content Script: Failed to get host data');
+        return;
+    }
     const { host, reactRoot } = hostData;
-    
+
     host.dataset.type = 'quiz'; // Tag as quiz
-    
+
+    console.log('Content Script: Rendering RandomQuizOverlay');
     reactRoot.render(
-        <RandomQuizOverlay 
-            onClose={removeHost} 
-            onSnooze={handleSnooze} 
-            onTurnOff={handleTurnOff} 
+        <RandomQuizOverlay
+            onClose={removeHost}
+            onSnooze={handleSnooze}
+            onTurnOff={handleTurnOff}
         />
     );
 };
@@ -146,6 +151,7 @@ const mountRandomQuiz = () => {
 // --- Message Listening ---
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'triggerRandomQuiz') {
+        console.log('Content Script: Checked triggerRandomQuiz');
         mountRandomQuiz();
         sendResponse({ success: true });
     }
@@ -175,7 +181,7 @@ document.addEventListener('mouseup', (e) => {
             // Clicked clear
             if (iconElement) iconElement.remove();
             iconElement = null;
-            
+
             // Close Popup on outside click, but KEEP Quiz open
             if (host && !host.contains(e.target)) {
                 if (host.dataset.type === 'popup') {
@@ -293,7 +299,7 @@ highlightSavedWords();
 chrome.storage.onChanged.addListener((changes, namespace) => {
     // If enabled status changes, we might want to kill the quiz? 
     // Usually user changes it in New Tab, so background handles it.
-    
+
     if (namespace === 'local' && changes.vocabulary) {
         // Re-run highlighting? 
         // Ideally we only add new ones, but re-running is safer for sync
