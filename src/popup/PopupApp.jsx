@@ -117,8 +117,8 @@ export default function PopupApp() {
                     <button
                         onClick={handleSave}
                         className={`p-2 rounded-lg transition-colors border ${saved
-                                ? 'bg-yellow-400 text-white border-yellow-500 hover:bg-yellow-500'
-                                : 'bg-white/10 text-gray-300 border-white/20 hover:bg-white/20 hover:text-white'
+                            ? 'bg-yellow-400 text-white border-yellow-500 hover:bg-yellow-500'
+                            : 'bg-white/10 text-gray-300 border-white/20 hover:bg-white/20 hover:text-white'
                             }`}
                         title={saved ? "Remove from learning list" : "Save to learning list"}
                     >
@@ -187,22 +187,30 @@ export default function PopupApp() {
                                             {sense.synonyms && sense.synonyms.length > 0 && (
                                                 <div className="flex flex-wrap gap-1.5 mb-2.5">
                                                     <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">Syns:</span>
-                                                    {sense.synonyms.slice(0, 5).map((syn, k) => (
+                                                    {sense.synonyms.map((syn, k) => (
                                                         <span key={k} className="bg-gray-50 px-1.5 py-0.5 rounded text-[10px] text-gray-600 font-medium border border-gray-100">
                                                             {syn}
                                                         </span>
                                                     ))}
-                                                    {sense.synonyms.length > 5 && (
-                                                        <span className="text-[10px] text-gray-400">+{sense.synonyms.length - 5}</span>
-                                                    )}
                                                 </div>
                                             )}
 
                                             {/* Examples */}
                                             {sense.examples && sense.examples.length > 0 && (
                                                 <ul className="space-y-1 pl-2 border-l-2 border-orange-100/50">
-                                                    {sense.examples.slice(0, 2).map((ex, j) => (
-                                                        <li key={j} className="text-xs text-gray-500 italic">"{ex}"</li>
+                                                    {sense.examples.map((ex, j) => (
+                                                        <li key={j} className="text-xs text-gray-500 italic">
+                                                            {typeof ex === 'object' ? (
+                                                                <>
+                                                                    {ex.pattern && (
+                                                                        <span className="font-bold text-oxford-blue not-italic mr-1">
+                                                                            {ex.pattern}
+                                                                        </span>
+                                                                    )}
+                                                                    {ex.text}
+                                                                </>
+                                                            ) : ex}
+                                                        </li>
                                                     ))}
                                                 </ul>
                                             )}
@@ -219,17 +227,12 @@ export default function PopupApp() {
                                     <TrendingUp size={14} /> Idioms
                                 </h3>
                                 <div className="space-y-2">
-                                    {data.idioms.slice(0, 3).map((idm, idx) => (
+                                    {data.idioms.map((idm, idx) => (
                                         <div key={idx} className="bg-orange-50/50 p-2.5 rounded-lg border border-orange-100/50">
                                             <p className="font-bold text-gray-800 text-xs mb-0.5">{idm.phrase}</p>
                                             <p className="text-[10px] text-gray-500">{idm.definition}</p>
                                         </div>
                                     ))}
-                                    {data.idioms.length > 3 && (
-                                        <p className="text-center text-xs text-blue-500 font-medium cursor-pointer hover:underline">
-                                            And {data.idioms.length - 3} more idioms...
-                                        </p>
-                                    )}
                                 </div>
                             </div>
                         )}

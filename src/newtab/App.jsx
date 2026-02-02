@@ -277,7 +277,25 @@ export default function App() {
                         {sense.examples && sense.examples.length > 0 && (
                             <ul className="text-gray-500 pl-6 space-y-0.5 border-l-2 border-gray-100 mt-1">
                                 {sense.examples.map((ex, j) => (
-                                    <li key={j} className="italic text-xs">"{ex}"</li>
+                                    <li key={j} className="italic text-xs">
+                                        {typeof ex === 'object' ? (
+                                            <>
+                                                {ex.pattern && (
+                                                    <span className="font-bold text-oxford-blue not-italic bg-blue-50 px-1 rounded mr-1">
+                                                        {ex.pattern}
+                                                    </span>
+                                                )}
+                                                {ex.label && (
+                                                    <span className="text-[10px] uppercase font-bold text-gray-400 mr-1 not-italic border border-gray-200 px-1 rounded">
+                                                        {ex.label}
+                                                    </span>
+                                                )}
+                                                {ex.text}
+                                            </>
+                                        ) : (
+                                            ex // Render legacy string examples directly
+                                        )}
+                                    </li>
                                 ))}
                             </ul>
                         )}
@@ -648,8 +666,19 @@ export default function App() {
                                                         {/* Examples */}
                                                         {sense.examples && sense.examples.length > 0 && (
                                                             <ul className="text-gray-500 italic text-sm pl-3 border-l-2 border-blue-200 space-y-1">
-                                                                {sense.examples.slice(0, 3).map((ex, j) => (
-                                                                    <li key={j}>"{ex}"</li>
+                                                                {sense.examples.map((ex, j) => (
+                                                                    <li key={j}>
+                                                                        {typeof ex === 'object' ? (
+                                                                            <>
+                                                                                {ex.pattern && (
+                                                                                    <span className="font-bold text-oxford-blue not-italic bg-blue-50 px-1 rounded mr-1">
+                                                                                        {ex.pattern}
+                                                                                    </span>
+                                                                                )}
+                                                                                {ex.text}
+                                                                            </>
+                                                                        ) : ex}
+                                                                    </li>
                                                                 ))}
                                                             </ul>
                                                         )}

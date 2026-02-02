@@ -7096,10 +7096,10 @@
     ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
   ]);
   function parseOxfordHTML(htmlString) {
-    var _a, _b;
+    var _a, _b, _c, _d;
     const parser = new DOMParser();
     const doc = parser.parseFromString(htmlString, "text/html");
-    const entry = doc.querySelector(".webtop");
+    const entry = doc.querySelector(".entry") || doc.querySelector(".webtop");
     if (!entry) {
       if (doc.querySelector(".result-list")) {
         return { error: "Word not found directly. Please try a more specific word." };
@@ -7124,47 +7124,118 @@
     if (bre) phonetics.push(bre);
     if (name) phonetics.push(name);
     const senses = [];
-    const senseElements = doc.querySelectorAll(".sense");
+    const senseElements = entry.querySelectorAll(".sense");
     senseElements.forEach((sense) => {
-      var _a2;
+      var _a2, _b2, _c2;
       const def = (_a2 = sense.querySelector(".def")) == null ? void 0 : _a2.textContent;
+      let cefr = sense.getAttribute("cefr");
+      if (!cefr) {
+        const cefrSpan = sense.querySelector(".ox3000, .ox5000");
+        if (cefrSpan) {
+          Array.from(cefrSpan.classList);
+          const innerSym = cefrSpan.querySelector('span[class^="ox3ksym_"]');
+          if (innerSym) {
+            cefr = innerSym.className.replace("ox3ksym_", "").toUpperCase();
+          }
+        }
+      }
       if (def) {
         const examples = [];
-        sense.querySelectorAll(".x").forEach((x2) => {
-          examples.push(x2.textContent);
-        });
-        const synonyms = [];
-        sense.querySelectorAll(".xr_s").forEach((syn) => {
-          var _a3;
-          let text = (_a3 = syn.textContent) == null ? void 0 : _a3.trim();
-          if (text) synonyms.push(text);
-        });
-        if (synonyms.length === 0) {
-          sense.querySelectorAll(".syn, .xr").forEach((el2) => {
-            if (el2.textContent.includes("synonym")) {
-              const clean = el2.textContent.replace("synonym", "").trim();
-              if (clean) synonyms.push(clean);
+        const exampleList = sense.querySelectorAll(".examples > li");
+        if (exampleList.length > 0) {
+          exampleList.forEach((li2) => {
+            var _a3, _b3, _c3, _d2, _e, _f;
+            const pattern = (_b3 = (_a3 = li2.querySelector(".cf")) == null ? void 0 : _a3.textContent) == null ? void 0 : _b3.trim();
+            const label = (_d2 = (_c3 = li2.querySelector(".labels")) == null ? void 0 : _c3.textContent) == null ? void 0 : _d2.trim();
+            const text = (_f = (_e = li2.querySelector(".x")) == null ? void 0 : _e.textContent) == null ? void 0 : _f.trim();
+            if (text || pattern) {
+              examples.push({
+                pattern,
+                label,
+                text: text || ""
+              });
             }
           });
+        } else {
+          sense.querySelectorAll(".x").forEach((x2) => {
+            var _a3;
+            examples.push({ text: (_a3 = x2.textContent) == null ? void 0 : _a3.trim() });
+          });
         }
-        senses.push({ definition: def, examples, synonyms });
+        const synonyms = [];
+        sense.querySelectorAll(".xr_s, .syn").forEach((syn) => {
+          var _a3;
+          let text = (_a3 = syn.textContent) == null ? void 0 : _a3.trim();
+          text = text.replace(/^synonym\s*/i, "");
+          if (text) synonyms.push(text);
+        });
+        const grammar = ((_b2 = sense.querySelector(".gram")) == null ? void 0 : _b2.textContent) || "";
+        const labels = ((_c2 = sense.querySelector(".labels")) == null ? void 0 : _c2.textContent) || "";
+        senses.push({
+          definition: def,
+          examples,
+          synonyms,
+          cefr: cefr ? cefr.toUpperCase() : null,
+          grammar,
+          labels
+        });
       }
     });
+    const verbForms = [];
+    const verbFormsContainer = doc.querySelector(".verb_forms_table") || doc.querySelector('.unbox[unbox="verbforms"]');
+    if (verbFormsContainer) {
+      verbFormsContainer.querySelectorAll("tr").forEach((tr) => {
+        var _a2, _b2, _c2, _d2;
+        const formName = (_b2 = (_a2 = tr.querySelector("th")) == null ? void 0 : _a2.textContent) == null ? void 0 : _b2.trim();
+        const formValue = (_d2 = (_c2 = tr.querySelector("td")) == null ? void 0 : _c2.textContent) == null ? void 0 : _d2.trim();
+        if (formName && formValue) {
+          verbForms.push({ form: formName, value: formValue });
+        }
+      });
+    }
     const idioms = [];
-    doc.querySelectorAll(".idm-g").forEach((idmBlock) => {
-      var _a2, _b2, _c, _d;
+    const idiomGroups = doc.querySelectorAll(".idm-g, .idm-gs .idm-g");
+    idiomGroups.forEach((idmBlock) => {
+      var _a2, _b2, _c2, _d2;
       const phrase = (_b2 = (_a2 = idmBlock.querySelector(".idm")) == null ? void 0 : _a2.textContent) == null ? void 0 : _b2.trim();
-      const def = (_d = (_c = idmBlock.querySelector(".def")) == null ? void 0 : _c.textContent) == null ? void 0 : _d.trim();
+      const def = (_d2 = (_c2 = idmBlock.querySelector(".def")) == null ? void 0 : _c2.textContent) == null ? void 0 : _d2.trim();
+      const examples = [];
+      idmBlock.querySelectorAll(".x").forEach((x2) => examples.push(x2.textContent));
       if (phrase && def) {
-        idioms.push({ phrase, definition: def });
+        idioms.push({ phrase, definition: def, examples });
       }
     });
+    const phrasalVerbs = [];
+    const pvContainer = doc.querySelector(".phrasal_verb_links") || doc.querySelector(".pv-gs");
+    if (pvContainer) {
+      pvContainer.querySelectorAll("li, .pv-g").forEach((item) => {
+        var _a2;
+        const text = (_a2 = item.textContent) == null ? void 0 : _a2.trim();
+        if (text) phrasalVerbs.push(text);
+      });
+    }
+    const topics = [];
+    doc.querySelectorAll(".topic-g .topic_name").forEach((topic) => {
+      var _a2;
+      topics.push((_a2 = topic.textContent) == null ? void 0 : _a2.trim());
+    });
+    const vocabBox = doc.querySelector('.unbox[unbox="vocab"]');
+    if (vocabBox) {
+      const title = (_c = vocabBox.querySelector(".box_title")) == null ? void 0 : _c.textContent;
+      const items = (_d = vocabBox.querySelector(".body")) == null ? void 0 : _d.textContent;
+      if (title) {
+        topics.push(`${title}: ${items || ""}`.trim());
+      }
+    }
     return {
       headword,
       pos,
       phonetics,
       senses,
-      idioms
+      verbForms,
+      idioms,
+      phrasalVerbs,
+      topics
     };
   }
   function Popup({ x: x2, y: y2, word, onClose }) {
@@ -7279,15 +7350,38 @@
                     i + 1,
                     "."
                   ] }),
+                  sense.cefr && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-[10px] font-bold text-oxford-blue bg-blue-100 px-1.5 py-0.5 rounded mr-2 align-middle border border-blue-200", title: `CEFR Level: ${sense.cefr}`, children: sense.cefr }),
                   sense.definition
                 ] }),
                 sense.examples && sense.examples.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsx("ul", { className: "text-gray-500 pl-4 space-y-1 mt-1 border-l-2 border-gray-100", children: sense.examples.map((ex, j) => /* @__PURE__ */ jsxRuntimeExports.jsxs("li", { className: "italic", children: [
-                  '"',
-                  ex,
-                  '"'
+                  ex.pattern && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-bold text-oxford-blue bg-blue-50/50 px-1 rounded mr-1 not-italic", children: ex.pattern }),
+                  ex.label && /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-xs uppercase font-bold text-gray-400 mr-1 not-italic border border-gray-200 px-1 rounded", children: ex.label }),
+                  ex.text
                 ] }, j)) })
               ] }, i)),
-              (!data.senses || data.senses.length === 0) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-gray-400 italic", children: "No detailed definitions found." })
+              (!data.senses || data.senses.length === 0) && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-gray-400 italic", children: "No detailed definitions found." }),
+              data.verbForms && data.verbForms.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 border-t border-gray-100 pt-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold text-gray-700 mb-2 text-xs uppercase tracking-wider", children: "Verb Forms" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-gray-50 rounded-lg p-3 text-sm space-y-2 border border-gray-100", children: data.verbForms.map((vf2, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex justify-between items-center", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-gray-500 text-xs", children: vf2.form }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "font-medium text-gray-800", children: vf2.value })
+                ] }, index)) })
+              ] }),
+              data.phrasalVerbs && data.phrasalVerbs.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 border-t border-gray-100 pt-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold text-gray-700 mb-2 text-xs uppercase tracking-wider", children: "Phrasal Verbs" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "flex flex-wrap gap-2", children: data.phrasalVerbs.map((pv, index) => /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "bg-orange-50 text-orange-700 px-2.5 py-1 rounded-md text-sm border border-orange-100 font-medium hover:bg-orange-100 transition-colors cursor-default", children: pv }, index)) })
+              ] }),
+              data.idioms && data.idioms.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 border-t border-gray-100 pt-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold text-gray-700 mb-2 text-xs uppercase tracking-wider", children: "Idioms" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "space-y-3", children: data.idioms.map((idm, index) => /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "text-sm bg-purple-50 p-3 rounded-lg border border-purple-100", children: [
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-bold text-purple-900 mb-1", children: idm.phrase }),
+                  /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "text-purple-800/80", children: idm.definition })
+                ] }, index)) })
+              ] }),
+              data.topics && data.topics.length > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "mt-4 border-t border-gray-100 pt-3", children: [
+                /* @__PURE__ */ jsxRuntimeExports.jsx("h3", { className: "font-bold text-gray-700 mb-2 text-xs uppercase tracking-wider", children: "Vocabulary Building" }),
+                /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "bg-green-50 text-green-800 p-3 rounded-lg text-sm border border-green-100", children: data.topics.map((t2, i) => /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "font-medium", children: t2 }, i)) })
+              ] })
             ] })
           ] }) : null })
         ]
