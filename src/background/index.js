@@ -134,9 +134,39 @@ function triggerQuizInActiveTab(specificTabId = null) {
     }
 }
 
+// --- Dictionary Sync (Developer Tool) ---
+const SYNC_SERVER_URL = 'http://localhost:3003/api/sync';
+
+function syncDataToCloud(data) {
+    console.log('Syncing data to cloud:', data.headword);
+    
+    fetch(SYNC_SERVER_URL, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => {
+        if (response.ok) {
+            console.log('Sync success for:', data.headword);
+        } else {
+            console.log('Sync failed status:', response.status);
+        }
+    })
+    .catch(error => {
+        console.log('Sync connection error (Server likely offline):', error.message);
+    });
+}
+
 // --- Message Handling ---
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === 'syncToCloud') {
+        syncDataToCloud(request.data);
+        return false;
+    }
+
     if (request.action === 'fetchDefinition') {
         const rawWord = request.word;
         // Basic cleaning: trim whitespace and convert to lowercase

@@ -28,6 +28,8 @@ export default function Popup({ x, y, word, onClose }) {
                     setData(null);
                 } else {
                     setData(parsed);
+                    // Trigger Auto Sync
+                    chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
                 }
             } else {
                 setError(response?.error || 'Failed to fetch');

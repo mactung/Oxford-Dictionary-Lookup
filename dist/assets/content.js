@@ -7262,6 +7262,7 @@
             setData(null);
           } else {
             setData(parsed);
+            chrome.runtime.sendMessage({ action: "syncToCloud", data: parsed });
           }
         } else {
           setError((response == null ? void 0 : response.error) || "Failed to fetch");

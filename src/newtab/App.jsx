@@ -146,6 +146,8 @@ export default function App() {
         if (existing) {
             setSearchedWordData({ ...existing, isExisting: true });
             setShowAddModal(true);
+            // Trigger Auto Sync even for existing words (to ensure DB has them)
+            chrome.runtime.sendMessage({ action: 'syncToCloud', data: existing });
             return;
         }
 
@@ -163,6 +165,8 @@ export default function App() {
                     setSearchError(parsed.error);
                 } else {
                     setSearchedWordData(parsed);
+                    // Trigger Auto Sync
+                    chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
                 }
             } else {
                 setSearchError(response?.error || 'Failed to fetch definition.');
