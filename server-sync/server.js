@@ -1,4 +1,5 @@
 require('dotenv').config();
+const setupAuth = require('./auth');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
@@ -21,6 +22,9 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0
 });
+
+// Auth Setup
+const { authenticateToken } = setupAuth(app, pool);
 
 // Init DB
 async function initDB() {
@@ -137,7 +141,70 @@ async function initDB() {
     }
 }
 
+// Init User DB
+async function initUserDB() {
+    try {
+        const connection = await pool.getConnection();
+        console.log('Initializing User tables...');
+
+        // 1. Users
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                password_hash VARCHAR(255) NOT NULL,
+                username VARCHAR(100),
+                streak_days INT DEFAULT 0,
+                last_practice_date DATE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Migration: Add columns if they don't exist (for existing tables)
+        try {
+            await connection.query('ALTER TABLE users ADD COLUMN streak_days INT DEFAULT 0');
+        } catch (e) { /* ignore if exists */ }
+        try {
+            await connection.query('ALTER TABLE users ADD COLUMN last_practice_date DATE');
+        } catch (e) { /* ignore if exists */ }
+
+        // 2. User Words (Link user to dictionary entries)
+        // Store user-specific data like SRS level, next review, notes
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS user_words (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                headword VARCHAR(255) NOT NULL,
+                srs_level INT DEFAULT 0,
+                next_review TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_user_word (user_id, headword),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+        
+        // 3. Practice Logs (For Leaderboard)
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS practice_logs (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                points INT DEFAULT 0,
+                words_practiced INT DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `);
+
+        console.log('User tables ready.');
+        connection.release();
+    } catch (error) {
+        console.error('User DB initialization failed:', error);
+    }
+}
+
 initDB();
+initUserDB();
 
 // Helper: Clear child data for an entry (to rewrite fresh data)
 async function clearEntryChildren(connection, entryId) {
@@ -253,6 +320,158 @@ app.post('/api/sync', async (req, res) => {
     } catch (error) {
         await connection.rollback();
         console.error('Error syncing data:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        connection.release();
+    }
+});
+
+// --- User Sync and Leaderboard ---
+
+// Sync User Vocabulary
+app.post('/api/user/sync', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const { vocabulary } = req.body; // Array of { headword, srsLevel, nextReview, ... }
+
+    if (!Array.isArray(vocabulary)) {
+        return res.status(400).json({ error: 'Invalid data format' });
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Strategy: Upsert.
+        // If we want true "sync" with conflict resolution (e.g. valid timestamps), it's complex.
+        // For now: Client sends their full valid list (or changes). 
+        // We will simple "Upsert" provided words.
+        
+        for (const word of vocabulary) {
+            await connection.query(`
+                INSERT INTO user_words (user_id, headword, srs_level, next_review, updated_at)
+                VALUES (?, ?, ?, ?, NOW())
+                ON DUPLICATE KEY UPDATE 
+                    srs_level = VALUES(srs_level),
+                    next_review = VALUES(next_review),
+                    updated_at = NOW()
+            `, [userId, word.headword, word.srsLevel || 0, word.nextReview ? new Date(word.nextReview) : new Date()]);
+        }
+
+        await connection.commit();
+        
+        // Return latest data from server
+        const [rows] = await connection.query('SELECT headword, srs_level, next_review FROM user_words WHERE user_id = ?', [userId]);
+        
+        res.json({ success: true, vocabulary: rows });
+
+    } catch (error) {
+        await connection.rollback();
+        console.error('User sync error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        connection.release();
+    }
+});
+
+// Get User Vocabulary (Download)
+app.get('/api/user/vocabulary', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const connection = await pool.getConnection();
+    try {
+        const [rows] = await connection.query('SELECT headword, srs_level, next_review FROM user_words WHERE user_id = ?', [userId]);
+        res.json({ success: true, vocabulary: rows });
+    } catch (error) {
+        console.error('Get user vocab error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        connection.release();
+    }
+});
+
+// Record Practice (Update Leaderboard & Streak)
+app.post('/api/user/practice', authenticateToken, async (req, res) => {
+    const userId = req.user.id;
+    const { points, wordsCount } = req.body;
+
+    if (!points) return res.status(400).json({ error: 'Points required' });
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // 1. Log Practice
+        await connection.query('INSERT INTO practice_logs (user_id, points, words_practiced) VALUES (?, ?, ?)', 
+            [userId, points, wordsCount || 0]);
+        
+        // 2. Update Streak
+        // Fetch current streak info
+        const [rows] = await connection.query('SELECT streak_days, last_practice_date FROM users WHERE id = ? FOR UPDATE', [userId]);
+        if (rows.length > 0) {
+            let { streak_days, last_practice_date } = rows[0];
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Javascript Date handling can be tricky with timezones, assuming server time is consistent
+            // Ideally should use DB time for comparison or consistent UTC
+            
+            if (last_practice_date) {
+                const lastDate = new Date(last_practice_date).toISOString().split('T')[0];
+                const diffTime = new Date(today) - new Date(lastDate);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diffDays === 1) {
+                    // Consecutive day
+                    streak_days = (streak_days || 0) + 1;
+                } else if (diffDays > 1) {
+                    // Missed a day (or more)
+                    streak_days = 1;
+                }
+                // If diffDays === 0 (same day), do nothing
+            } else {
+                // First time
+                streak_days = 1;
+            }
+
+            // Update user
+            await connection.query('UPDATE users SET streak_days = ?, last_practice_date = ? WHERE id = ?', 
+                [streak_days, today, userId]);
+        }
+
+        await connection.commit();
+        res.json({ success: true, streak: rows[0]?.streak_days });
+    } catch (error) {
+        await connection.rollback();
+        console.error('Practice log error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        connection.release();
+    }
+});
+
+// Get Leaderboard
+app.get('/api/leaderboard', async (req, res) => {
+    const { period } = req.query; // 'all', 'week', 'month' - Default 'all'
+    
+    // Simple all-time leaderboard for now
+    const query = `
+        SELECT 
+            u.username, 
+            u.streak_days,
+            SUM(p.points) as total_points, 
+            COUNT(DISTINCT p.id) as sessions,
+            (SELECT COUNT(*) FROM user_words uw WHERE uw.user_id = u.id AND uw.srs_level >= 4) as mastered_words
+        FROM users u
+        LEFT JOIN practice_logs p ON u.id = p.user_id
+        GROUP BY u.id
+        ORDER BY mastered_words DESC, total_points DESC
+        LIMIT 10
+    `;
+
+    const connection = await pool.getConnection();
+    try {
+        const [rows] = await connection.query(query);
+        res.json({ success: true, leaderboard: rows });
+    } catch (error) {
+        console.error('Leaderboard error:', error);
         res.status(500).json({ error: 'Internal server error' });
     } finally {
         connection.release();

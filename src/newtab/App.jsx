@@ -1,14 +1,23 @@
 
 import React, { useEffect, useState } from 'react';
-import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award, Plus, Loader2, Check, Settings, Clock, Power } from 'lucide-react';
+import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award, Plus, Loader2, Check, Settings, Clock, Power, User, X } from 'lucide-react';
 import { parseOxfordHTML } from '../utils/parser';
 
 import Quiz from './Quiz';
+import LoginComponent from '../components/LoginComponent';
+import LeaderboardComponent from '../components/LeaderboardComponent';
+import { syncUserVocabulary } from '../utils/api';
 
 export default function App() {
     const [vocabulary, setVocabulary] = useState([]);
-    const [activeTab, setActiveTab] = useState('home'); // home, library
+
+    const [activeTab, setActiveTab] = useState('home'); // home, library, leaderboard
     const [isQuizActive, setIsQuizActive] = useState(false);
+
+    // User / Auth State
+    const [user, setUser] = useState(null);
+    const [token, setToken] = useState(null);
+    const [showProfileModal, setShowProfileModal] = useState(false);
 
     // Search/Add State
     const [dashboardSearch, setDashboardSearch] = useState('');
@@ -47,6 +56,14 @@ export default function App() {
             // Load Random Practice Settings
             if (result.randomPracticeEnabled !== undefined) setRandomPracticeEnabled(result.randomPracticeEnabled);
             if (result.randomPracticeFrequency !== undefined) setRandomPracticeFrequency(result.randomPracticeFrequency);
+        });
+
+        // Load User
+        chrome.storage.local.get(['user', 'token'], (result) => {
+            if (result.user && result.token) {
+                setUser(result.user);
+                setToken(result.token);
+            }
         });
 
         // Load saved folder selection
@@ -134,6 +151,52 @@ export default function App() {
         if (e) e.stopPropagation();
         if (url) new Audio(url).play();
     }
+
+    // --- Auth Logic ---
+    const handleLoginSuccess = (userData, tokenData) => {
+        setUser(userData);
+        setToken(tokenData);
+        chrome.storage.local.set({ user: userData, token: tokenData });
+        performSync(tokenData);
+    };
+
+    const handleLogout = () => {
+        setUser(null);
+        setToken(null);
+        chrome.storage.local.remove(['user', 'token']);
+    };
+
+    const performSync = (authToken) => {
+        const localVocab = [...vocabulary];
+        syncUserVocabulary(authToken, localVocab).then(res => {
+            if (res.success && res.vocabulary) {
+                console.log('Sync success (New Tab)');
+                const serverVocab = res.vocabulary;
+                const localMap = new Map(localVocab.map(i => [i.headword, i]));
+                const merged = [...localVocab];
+                
+                let changed = false;
+                serverVocab.forEach(sv => {
+                    if (!localMap.has(sv.headword)) {
+                        merged.push({
+                            headword: sv.headword,
+                            pos: 'unknown',
+                            srsLevel: sv.srs_level,
+                            nextReview: new Date(sv.next_review).getTime(),
+                            contextUrl: 'Synced',
+                            definition: 'Synced via New Tab'
+                        });
+                        changed = true;
+                    }
+                });
+
+                if (changed) {
+                    setVocabulary(merged); // Update state
+                    chrome.storage.local.set({ vocabulary: merged });
+                }
+            }
+        }).catch(err => console.error('Sync failed', err));
+    };
 
     // --- Search & Add Logic ---
     const handleDashboardSearch = (e) => {
@@ -366,8 +429,35 @@ export default function App() {
                         >
                             Library
                         </button>
+                        <button
+                            onClick={() => setActiveTab('leaderboard')}
+                            className={`px-6 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'leaderboard' ? 'bg-white text-oxford-blue shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                                }`}
+                        >
+                            Leaderboard
+                        </button>
                     </div>
-                    <div className="w-8"></div> {/* Spacer balance */}
+
+                    
+                    {/* User Profile Button */}
+                    <button 
+                        onClick={() => setShowProfileModal(true)}
+                        className={`p-2 rounded-lg transition-colors flex items-center gap-2 ${user ? 'bg-blue-50 text-oxford-blue' : 'text-gray-400 hover:bg-gray-100'}`}
+                        title="Profile & Leaderboard"
+                    >
+                        {user ? (
+                            <>
+                                <div className="w-8 h-8 rounded-full bg-oxford-blue text-white flex items-center justify-center text-xs font-bold">
+                                    {user.username[0].toUpperCase()}
+                                </div>
+                                <span className="text-sm font-bold hidden md:inline">{user.username}</span>
+                            </>
+                        ) : (
+                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <User size={20} className="text-gray-500" />
+                            </div>
+                        )}
+                    </button>
                 </div>
             </div>
 
@@ -568,6 +658,17 @@ export default function App() {
                         )}
                     </div>
                 )}
+
+                {activeTab === 'leaderboard' && (
+                    <div className="space-y-6 animate-slide-up">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4 mb-6">
+                            <h2 className="text-2xl font-bold text-gray-900">Leaderboard</h2>
+                        </div>
+                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <LeaderboardComponent />
+                        </div>
+                    </div>
+                )}
             </main>
 
             {/* Mobile Bottom Nav */}
@@ -585,6 +686,13 @@ export default function App() {
                 >
                     <BookOpen size={24} strokeWidth={activeTab === 'library' ? 2.5 : 2} />
                     <span className="text-[10px] font-bold mt-1">Library</span>
+                </button>
+                <button
+                    onClick={() => setActiveTab('leaderboard')}
+                    className={`flex flex-col items-center p-2 rounded-lg w-full ${activeTab === 'leaderboard' ? 'text-oxford-blue' : 'text-gray-400'}`}
+                >
+                    <Award size={24} strokeWidth={activeTab === 'leaderboard' ? 2.5 : 2} />
+                    <span className="text-[10px] font-bold mt-1">Leader</span>
                 </button>
             </div>
 
@@ -724,6 +832,35 @@ export default function App() {
                                     )}
                                 </div>
                             ) : null}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Profile Modal */}
+            {showProfileModal && (
+                <div
+                    className="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in"
+                    onClick={() => setShowProfileModal(false)}
+                >
+                    <div
+                        className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden relative"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="bg-oxford-blue text-white px-6 py-4 flex justify-between items-center shrink-0">
+                            <h3 className="text-lg font-bold flex items-center gap-2">
+                                <User size={20} /> User Profile
+                            </h3>
+                            <button onClick={() => setShowProfileModal(false)} className="hover:text-red-200 transition-colors">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto custom-scrollbar">
+                            <LoginComponent 
+                                user={user} 
+                                onLoginSuccess={handleLoginSuccess}
+                                onLogout={handleLogout}
+                            />
                         </div>
                     </div>
                 </div>
