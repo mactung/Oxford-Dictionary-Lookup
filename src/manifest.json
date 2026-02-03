@@ -15,7 +15,8 @@
         "alarms"
     ],
     "host_permissions": [
-        "https://www.oxfordlearnersdictionaries.com/*"
+        "https://www.oxfordlearnersdictionaries.com/*",
+        "http://localhost:3003/*"
     ],
     "background": {
         "service_worker": "assets/background.js",

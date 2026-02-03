@@ -30,39 +30,87 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
         // Filter due words
         let candidates = vocab.filter(w => !w.nextReview || w.nextReview <= now);
 
-        // If no due words, pick random
+        // If no due words, pick from all
         if (candidates.length === 0) {
             candidates = vocab;
         }
 
-        // Pick ONE random word
-        const word = candidates[Math.floor(Math.random() * candidates.length)];
+        // --- Smart Random Logic ---
+        chrome.storage.local.get(['randomHistory'], (result) => {
+            const history = result.randomHistory || { lastWord: null, dailyCounts: {} };
+            const today = new Date().toISOString().split('T')[0];
 
-        const definition = word.senses?.[0]?.definition || 'No definition';
-        const otherWords = vocab.filter(w => w.headword !== word.headword);
+            let filteredCandidates = candidates.filter(w => {
+                // 1. Avoid immediate predecessor
+                if (w.headword === history.lastWord) return false;
+                
+                // 2. Limit daily appearance (max 2)
+                const dayRecord = history.dailyCounts[today] || {};
+                const count = dayRecord[w.headword] || 0;
+                if (count >= 2) return false;
 
-        let distractors = otherWords
-            .sort(() => 0.5 - Math.random())
-            .slice(0, 3)
-            .map(w => w.senses?.[0]?.definition || 'No def');
+                return true;
+            });
 
-        // Fill with dummy if needed
-        while (distractors.length < 3) {
-            distractors.push('Random Wrong Definition ' + Math.floor(Math.random() * 100));
-        }
+            // Fallback if too aggressive
+            if (filteredCandidates.length === 0) {
+                console.log('RandomQuizOverlay: Filter too aggressive, relaxing rules.');
+                // Relax 1: Allow last word if huge pool? No, just allow repeat daily.
+                filteredCandidates = candidates.filter(w => w.headword !== history.lastWord);
+                
+                if (filteredCandidates.length === 0) {
+                    // Just pick anything
+                    filteredCandidates = candidates;
+                }
+            }
 
-        const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
+            // Pick ONE random word
+            const word = filteredCandidates[Math.floor(Math.random() * filteredCandidates.length)];
 
-        const question = {
-            wordObj: word,
-            type: 'meaning',
-            prompt: word.headword,
-            correctAnswer: definition,
-            options: options
-        };
+            // Update History
+            const newHistory = { ...history };
+            newHistory.lastWord = word.headword;
+            if (!newHistory.dailyCounts[today]) newHistory.dailyCounts[today] = {};
+            newHistory.dailyCounts[today][word.headword] = (newHistory.dailyCounts[today][word.headword] || 0) + 1;
+            
+            // Cleanup old dates? (Optional optimization)
+            // For now, keep it simple. If object gets huge, we can prune keys != today.
+            const dateKeys = Object.keys(newHistory.dailyCounts);
+            if (dateKeys.length > 5) {
+               dateKeys.forEach(k => {
+                   if (k !== today) delete newHistory.dailyCounts[k];
+               });
+            }
 
-        console.log('RandomQuizOverlay: Question set', question);
-        setQuestions([question]); // Only 1 question
+            chrome.storage.local.set({ randomHistory: newHistory });
+
+
+            const definition = word.senses?.[0]?.definition || 'No definition';
+            const otherWords = vocab.filter(w => w.headword !== word.headword);
+
+            let distractors = otherWords
+                .sort(() => 0.5 - Math.random())
+                .slice(0, 3)
+                .map(w => w.senses?.[0]?.definition || 'No def');
+
+            // Fill with dummy if needed
+            while (distractors.length < 3) {
+                distractors.push('Random Wrong Definition ' + Math.floor(Math.random() * 100));
+            }
+
+            const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
+
+            const question = {
+                wordObj: word,
+                type: 'meaning',
+                prompt: word.headword,
+                correctAnswer: definition,
+                options: options
+            };
+
+            console.log('RandomQuizOverlay: Question set', question);
+            setQuestions([question]); 
+        });
     };
 
     const handleAnswer = (option) => {

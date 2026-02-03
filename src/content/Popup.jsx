@@ -22,15 +22,20 @@ export default function Popup({ x, y, word, onClose }) {
         setLoading(true);
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word }, (response) => {
             if (response && response.success) {
-                const parsed = parseOxfordHTML(response.html);
-                if (parsed.error) {
-                    setError(parsed.error);
-                    setData(null);
+                if (response.localData) {
+                    setData(response.localData);
                 } else {
-                    setData(parsed);
+                    const parsed = parseOxfordHTML(response.html);
+                    if (!parsed.error) {
+                        setData(parsed);
+                        chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
+                    } else {
+                        setError(parsed.error);
+                        setData(null); // Ensure data is null if there's a parsing error
+                    }
                 }
             } else {
-                setError(response?.error || 'Failed to fetch');
+                setError('Definition not found');
             }
             setLoading(false);
         });

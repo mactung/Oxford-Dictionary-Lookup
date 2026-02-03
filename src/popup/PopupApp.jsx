@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Loader2, Volume2, TrendingUp, X, Star } from 'lucide-react';
 import { parseOxfordHTML } from '../utils/parser';
+import { syncUserVocabulary } from '../utils/api';
 
 export default function PopupApp() {
     const [query, setQuery] = useState('');
@@ -8,6 +9,60 @@ export default function PopupApp() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [saved, setSaved] = useState(false);
+    
+    // User State
+    const [token, setToken] = useState(null);
+
+    useEffect(() => {
+        // Load user from storage
+        chrome.storage.local.get(['token'], (result) => {
+            if (result.token) {
+                setToken(result.token);
+            }
+        });
+    }, []);
+
+
+
+    const performSync = (authToken) => {
+        chrome.storage.local.get(['vocabulary'], async (result) => {
+            const localVocab = result.vocabulary || [];
+            try {
+                const res = await syncUserVocabulary(authToken, localVocab);
+                if (res.success && res.vocabulary) {
+                    console.log('Sync success, merging...');
+                    // Merge strategy: Union based on headword
+                    // Ideally we should respect timestamps, but for now we just take server's view if conflict?
+                    // Or simple: Just ensure we have everything from server.
+                    
+                    const serverVocab = res.vocabulary; // { headword, srs_level, ... }
+                    
+                    // Creates a map of existing local items for preservation of extra fields (contextUrl etc)
+                    const localMap = new Map(localVocab.map(i => [i.headword, i]));
+                    
+                    const merged = [...localVocab];
+                    
+                    serverVocab.forEach(sv => {
+                        if (!localMap.has(sv.headword)) {
+                            // New word from server
+                            merged.push({
+                                headword: sv.headword,
+                                pos: 'unknown', // Server simplified this? Ideally server should store full data or we refetch
+                                srsLevel: sv.srs_level,
+                                nextReview: new Date(sv.next_review).getTime(),
+                                contextUrl: 'Synced',
+                                definition: 'Synced from other device' // Placeholder until viewed
+                            });
+                        }
+                    });
+                    
+                    chrome.storage.local.set({ vocabulary: merged });
+                }
+            } catch (err) {
+                console.error('Sync failed', err);
+            }
+        });
+    };
 
     useEffect(() => {
         if (data && data.headword) {
@@ -55,7 +110,12 @@ export default function PopupApp() {
             }
 
             if (newVocab) {
-                chrome.storage.local.set({ vocabulary: newVocab });
+                chrome.storage.local.set({ vocabulary: newVocab }, () => {
+                    // Sync with server if logged in
+                    if (token) {
+                        performSync(token);
+                    }
+                });
             }
         });
     };
@@ -72,11 +132,19 @@ export default function PopupApp() {
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word: query.trim() }, (response) => {
             setLoading(false);
             if (response && response.success) {
-                const parsed = parseOxfordHTML(response.html);
-                if (parsed.error) {
-                    setError(parsed.error);
+                if (response.localData) {
+                    setData(response.localData);
+                    // No need to sync back to cloud if it came from cloud/local? 
+                    // Actually, keeps it consistent if we treat it as "viewed"
                 } else {
-                    setData(parsed);
+                    const parsed = parseOxfordHTML(response.html);
+                    if (parsed.error) {
+                        setError(parsed.error);
+                    } else {
+                        setData(parsed);
+                        // Trigger Auto Sync
+                        chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
+                    }
                 }
             } else {
                 setError(response?.error || 'Failed to fetch definition');
@@ -113,6 +181,8 @@ export default function PopupApp() {
                     )}
                 </form>
 
+
+
                 {data && (
                     <button
                         onClick={handleSave}
@@ -129,6 +199,7 @@ export default function PopupApp() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                
                 {loading ? (
                     <div className="h-full flex flex-col items-center justify-center text-gray-400 space-y-2">
                         <Loader2 className="animate-spin text-oxford-blue" size={32} />
