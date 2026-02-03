@@ -509,6 +509,7 @@ export default function App() {
                                                 className="bg-transparent text-sm font-semibold text-gray-700 outline-none cursor-pointer"
                                             >
                                                 <option value="1">Every 1 min (Test)</option>
+                                                <option value="15">Every 15 mins</option>
                                                 <option value="30">Every 30 mins</option>
                                                 <option value="60">Every 1 hour</option>
                                                 <option value="120">Every 2 hours</option>

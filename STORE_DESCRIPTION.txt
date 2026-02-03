@@ -1,0 +1,32 @@
+Title: Oxford Dictionary Lookup & Vocabulary Builder
+
+Short Description:
+Select text to view definitions from Oxford Learner's Dictionary, save words, and master them with spaced repetition quizzes on your New Tab.
+
+Detailed Description:
+Transform your browsing experience into a language learning journey. Oxford Dictionary Lookup allows you to instantly check definitions of any word on the web and continuously build your vocabulary.
+
+Key Features:
+
+- Instant Lookup: Double-click or select any word on a webpage to get accurate definitions, phonetics, and audio from the Oxford Learner's Dictionary.
+- Smart Vocabulary Builder: Automatically save looked-up words to your personal library.
+- Spaced Repetition System (SRS): Master vocabulary efficiently with our built-in quiz system that schedules reviews at optimal intervals.
+- Random Practice Mode: Stay sharp with occasional pop-up quizzes while you browse. Now with customizable intervals (15 mins, 30 mins, 1 hour+) to fit your learning pace.
+- Beautiful New Tab Dashboard:
+  - Track your learning progress with visual stats.
+  - Daily Practice Sessions for words due for review.
+  - Quick Access: View and access your favorite bookmark folders directly from the new tab.
+- Audio Pronunciation: Listen to correct British and American pronunciations.
+
+---
+Reason for requesting 'alarms' permission:
+The 'alarms' permission is required to schedule periodic checks for the "Random Practice Mode". This feature allows users to set a timer (e.g., every 15, 30, or 60 minutes) to receive vocabulary practice quizzes while browsing, helping them reinforce their learning through spaced repetition. The alarm ensures these checks occur reliably at the user-defined intervals without keeping background scripts permanently running, which saves system resources.
+
+Reason for requesting 'storage' permission:
+The 'storage' permission is essential for saving the user's personal vocabulary list, quiz progress, and extension settings locally on their device. This allows the extension to function offline and ensures user data remains private and persistent across browser sessions.
+
+Reason for requesting 'bookmarks' permission:
+The 'bookmarks' permission is used to display the user's bookmark folders directly on the New Tab dashboard. This provides users with "Quick Access" to their favorite sites alongside their vocabulary tools, making the New Tab a central hub for their productivity and learning. The extension only reads bookmarks to display them and does not modify or delete them.
+
+Reason for requesting host permissions (https://www.oxfordlearnersdictionaries.com/*):
+This host permission is strictly required to fetch dictionary definitions, phonetics, and audio examples directly from the Oxford Learner's Dictionary website when a user looks up a word. The extension parses the HTML from this specific domain to present a clean, ad-free definition card to the user. No other data is accessed or sent to this domain.
