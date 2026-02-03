@@ -1,4 +1,5 @@
 // src/background/index.js
+import { API_BASE_URL } from '../config';
 
 const ALARM_NAME = 'randomPracticeCheck';
 const CHECK_INTERVAL_MIN = 1; // Check every 1 minute
@@ -135,7 +136,7 @@ function triggerQuizInActiveTab(specificTabId = null) {
 }
 
 // --- Dictionary Sync (Developer Tool) ---
-const SYNC_SERVER_URL = 'http://localhost:3003/api/sync';
+const SYNC_SERVER_URL = `${API_BASE_URL}/sync`;
 
 function syncDataToCloud(data) {
     console.log('Syncing data to cloud:', data.headword);
@@ -178,38 +179,55 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Helper to check if a response page is actually a search result list (meaning no exact match/redirect)
         // Note: Oxford usually redirects "search?q=governments" to ".../definition/english/government"
 
-        // 1. Try Direct URL
-        fetch(directUrl)
+        // 1. Try Local Server First
+        fetch(`${API_BASE_URL}/entry/${encodeURIComponent(word)}`)
             .then(response => {
-                if (response.ok) return response;
-                // 2. If 404, try Search URL (handles plurals/conjugations)
-                if (response.status === 404) {
-                    console.log(`Direct lookup failed for ${word}, trying search fallback...`);
-                    return fetch(searchUrl);
-                }
-                throw new Error('Network response was not ok');
+                if (response.ok) return response.json();
+                throw new Error('Local not found');
             })
-            .then(response => {
-                if (!response.ok) {
-                    // 3. Last resort: try appending _1 (sometimes helpful for simple homonyms)
-                    if (response.status === 404) {
-                        return fetch(`https://www.oxfordlearnersdictionaries.com/definition/english/${word}_1`);
-                    }
-                    throw new Error('Network response was not ok');
-                }
-                return response;
+            .then(localData => {
+                console.log('Found locally:', localData.headword);
+                // We need to convert this JSON back to HTML or handle it in the popup.
+                // The current popup expects HTML to parse OR raw data if we update it.
+                // UPDATING STRATEGY: 
+                // The popup `PopupApp.jsx` likely calls `parseOxfordHTML(html)`.
+                // If we return JSON here, `PopupApp.jsx` needs to handle it.
+                // Let's check `PopupApp.jsx` first? 
+                // NO, for now let's wrap it in a structure that PopupApp can detect, OR simpler:
+                // Just return the JSON object in a specific property like `localData`.
+                sendResponse({ success: true, localData: localData, finalUrl: 'local' });
             })
-            .then(response => {
-                // Check if we ultimately failed after fallback
-                if (!response.ok) throw new Error('Not found');
-                return Promise.all([response.text(), response.url]);
-            })
-            .then(([html, finalUrl]) => {
-                sendResponse({ success: true, html: html, finalUrl: finalUrl });
-            })
-            .catch(error => {
-                console.error('Fetch error:', error);
-                sendResponse({ success: false, error: 'Definition not found' });
+            .catch(() => {
+                // 2. Fallback to Oxford Direct URL
+                console.log(`Local lookup failed for ${word}, trying Oxford...`);
+                fetch(directUrl)
+                    .then(response => {
+                        if (response.ok) return response;
+                        if (response.status === 404) {
+                            return fetch(searchUrl);
+                        }
+                        throw new Error('Network response was not ok');
+                    })
+                    .then(response => {
+                        if (!response.ok) {
+                            if (response.status === 404) {
+                                return fetch(`https://www.oxfordlearnersdictionaries.com/definition/english/${word}_1`);
+                            }
+                            throw new Error('Network response was not ok');
+                        }
+                        return response;
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Not found');
+                        return Promise.all([response.text(), response.url]);
+                    })
+                    .then(([html, finalUrl]) => {
+                        sendResponse({ success: true, html: html, finalUrl: finalUrl });
+                    })
+                    .catch(error => {
+                        console.error('Fetch error:', error);
+                        sendResponse({ success: false, error: 'Definition not found' });
+                    });
             });
 
         return true; // Will respond asynchronously

@@ -7406,7 +7406,6 @@
       });
     }, []);
     const generateQuestions = (vocab) => {
-      var _a2, _b2;
       console.log("RandomQuizOverlay: Generating questions from vocab size", vocab.length);
       if (!vocab || vocab.length < 4) {
         console.log("RandomQuizOverlay: Not enough vocab (needs 4+)");
@@ -7417,26 +7416,56 @@
       if (candidates.length === 0) {
         candidates = vocab;
       }
-      const word = candidates[Math.floor(Math.random() * candidates.length)];
-      const definition = ((_b2 = (_a2 = word.senses) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.definition) || "No definition";
-      const otherWords = vocab.filter((w2) => w2.headword !== word.headword);
-      let distractors = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map((w2) => {
-        var _a3, _b3;
-        return ((_b3 = (_a3 = w2.senses) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.definition) || "No def";
+      chrome.storage.local.get(["randomHistory"], (result) => {
+        var _a2, _b2;
+        const history = result.randomHistory || { lastWord: null, dailyCounts: {} };
+        const today = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+        let filteredCandidates = candidates.filter((w2) => {
+          if (w2.headword === history.lastWord) return false;
+          const dayRecord = history.dailyCounts[today] || {};
+          const count = dayRecord[w2.headword] || 0;
+          if (count >= 2) return false;
+          return true;
+        });
+        if (filteredCandidates.length === 0) {
+          console.log("RandomQuizOverlay: Filter too aggressive, relaxing rules.");
+          filteredCandidates = candidates.filter((w2) => w2.headword !== history.lastWord);
+          if (filteredCandidates.length === 0) {
+            filteredCandidates = candidates;
+          }
+        }
+        const word = filteredCandidates[Math.floor(Math.random() * filteredCandidates.length)];
+        const newHistory = { ...history };
+        newHistory.lastWord = word.headword;
+        if (!newHistory.dailyCounts[today]) newHistory.dailyCounts[today] = {};
+        newHistory.dailyCounts[today][word.headword] = (newHistory.dailyCounts[today][word.headword] || 0) + 1;
+        const dateKeys = Object.keys(newHistory.dailyCounts);
+        if (dateKeys.length > 5) {
+          dateKeys.forEach((k2) => {
+            if (k2 !== today) delete newHistory.dailyCounts[k2];
+          });
+        }
+        chrome.storage.local.set({ randomHistory: newHistory });
+        const definition = ((_b2 = (_a2 = word.senses) == null ? void 0 : _a2[0]) == null ? void 0 : _b2.definition) || "No definition";
+        const otherWords = vocab.filter((w2) => w2.headword !== word.headword);
+        let distractors = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map((w2) => {
+          var _a3, _b3;
+          return ((_b3 = (_a3 = w2.senses) == null ? void 0 : _a3[0]) == null ? void 0 : _b3.definition) || "No def";
+        });
+        while (distractors.length < 3) {
+          distractors.push("Random Wrong Definition " + Math.floor(Math.random() * 100));
+        }
+        const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
+        const question = {
+          wordObj: word,
+          type: "meaning",
+          prompt: word.headword,
+          correctAnswer: definition,
+          options
+        };
+        console.log("RandomQuizOverlay: Question set", question);
+        setQuestions([question]);
       });
-      while (distractors.length < 3) {
-        distractors.push("Random Wrong Definition " + Math.floor(Math.random() * 100));
-      }
-      const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
-      const question = {
-        wordObj: word,
-        type: "meaning",
-        prompt: word.headword,
-        correctAnswer: definition,
-        options
-      };
-      console.log("RandomQuizOverlay: Question set", question);
-      setQuestions([question]);
     };
     const handleAnswer = (option) => {
       if (feedback) return;

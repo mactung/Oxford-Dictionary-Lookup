@@ -446,6 +446,67 @@ app.post('/api/user/practice', authenticateToken, async (req, res) => {
         connection.release();
     }
 });
+// Get Entry by Headword (For Extension - Local First)
+app.get('/api/entry/:headword', async (req, res) => {
+    const headword = req.params.headword;
+    const connection = await pool.getConnection();
+    try {
+        // 1. Fetch Entry
+        const [entries] = await connection.query('SELECT * FROM entries WHERE headword = ?', [headword]);
+        if (entries.length === 0) {
+            return res.status(404).json({ error: 'Entry not found' });
+        }
+        const entry = entries[0];
+
+        // 2. Fetch Children
+        const [phonetics] = await connection.query('SELECT * FROM phonetics WHERE entry_id = ?', [entry.id]);
+        const [senses] = await connection.query('SELECT * FROM senses WHERE entry_id = ? ORDER BY order_index', [entry.id]);
+        
+        // Enrich Senses with Examples and Synonyms
+        for (const sense of senses) {
+            const [examples] = await connection.query('SELECT * FROM examples WHERE sense_id = ?', [sense.id]);
+            sense.examples = examples;
+            const [synonyms] = await connection.query('SELECT word FROM synonyms WHERE sense_id = ?', [sense.id]);
+            sense.synonyms = synonyms.map(s => s.word);
+        }
+
+        const [idioms] = await connection.query('SELECT * FROM idioms WHERE entry_id = ?', [entry.id]);
+        const [verbForms] = await connection.query('SELECT * FROM verb_forms WHERE entry_id = ?', [entry.id]);
+        const [phrasalVerbs] = await connection.query('SELECT headword FROM phrasal_verbs WHERE entry_id = ?', [entry.id]);
+        const [topics] = await connection.query('SELECT topic_name FROM topics WHERE entry_id = ?', [entry.id]);
+
+        // Construct response matching what extension expects from parseOxfordHTML
+        const responseData = {
+            headword: entry.headword,
+            pos: entry.pos,
+            phonetics: phonetics.map(p => ({
+                type: p.type,
+                ipa: p.ipa,
+                audioUrl: p.audio_url
+            })),
+            senses: senses.map(s => ({
+                definition: s.definition,
+                cefr: s.cefr,
+                grammar: s.grammar,
+                labels: s.labels,
+                examples: s.examples.map(ex => ({ text: ex.text, pattern: ex.pattern })),
+                synonyms: s.synonyms
+            })),
+            idioms: idioms.map(idm => ({ phrase: idm.phrase, definition: idm.definition })),
+            verbForms: verbForms.map(vf => ({ form: vf.form_name, value: vf.value })),
+            phrasalVerbs: phrasalVerbs.map(pv => pv.headword),
+            topics: topics.map(t => t.topic_name)
+        };
+
+        res.json(responseData);
+
+    } catch (error) {
+        console.error('Get entry error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    } finally {
+        connection.release();
+    }
+});
 
 // Get Leaderboard
 app.get('/api/leaderboard', async (req, res) => {

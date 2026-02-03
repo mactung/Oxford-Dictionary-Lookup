@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3003/api';
+import { API_BASE_URL } from '../config';
 
 export async function login(email, password) {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
