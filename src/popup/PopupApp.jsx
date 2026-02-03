@@ -132,13 +132,19 @@ export default function PopupApp() {
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word: query.trim() }, (response) => {
             setLoading(false);
             if (response && response.success) {
-                const parsed = parseOxfordHTML(response.html);
-                if (parsed.error) {
-                    setError(parsed.error);
+                if (response.localData) {
+                    setData(response.localData);
+                    // No need to sync back to cloud if it came from cloud/local? 
+                    // Actually, keeps it consistent if we treat it as "viewed"
                 } else {
-                    setData(parsed);
-                    // Trigger Auto Sync
-                    chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
+                    const parsed = parseOxfordHTML(response.html);
+                    if (parsed.error) {
+                        setError(parsed.error);
+                    } else {
+                        setData(parsed);
+                        // Trigger Auto Sync
+                        chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
+                    }
                 }
             } else {
                 setError(response?.error || 'Failed to fetch definition');

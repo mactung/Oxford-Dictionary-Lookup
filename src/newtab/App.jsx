@@ -223,13 +223,18 @@ export default function App() {
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word: wordToSearch }, (response) => {
             setIsSearching(false);
             if (response && response.success) {
-                const parsed = parseOxfordHTML(response.html);
-                if (parsed.error) {
-                    setSearchError(parsed.error);
+                if (response.localData) {
+                    setSearchedWordData(response.localData);
+                    // No sync needed usually if local
                 } else {
-                    setSearchedWordData(parsed);
-                    // Trigger Auto Sync
-                    chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
+                    const parsed = parseOxfordHTML(response.html);
+                    if (parsed.error) {
+                        setSearchError(parsed.error);
+                    } else {
+                        setSearchedWordData(parsed);
+                        // Trigger Auto Sync
+                        chrome.runtime.sendMessage({ action: 'syncToCloud', data: parsed });
+                    }
                 }
             } else {
                 setSearchError(response?.error || 'Failed to fetch definition.');
