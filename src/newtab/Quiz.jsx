@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Check, X, Clock, Brain, Volume2, ArrowRight, Play } from 'lucide-react';
+import QuizQuestion from '../components/QuizQuestion';
 
 export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
     const [questions, setQuestions] = useState([]);
@@ -7,7 +8,6 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
     const [score, setScore] = useState(0);
     const [showScore, setShowScore] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState(null); // For multiple choice
-    const [spellingInput, setSpellingInput] = useState('');     // For spelling
     const [isReviewAhead, setIsReviewAhead] = useState(false);
     const [feedback, setFeedback] = useState(null); // 'correct' | 'incorrect'
 
@@ -16,7 +16,7 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
     const [isPreQuizReview, setIsPreQuizReview] = useState(false);
 
     const audioRef = useRef(null);
-    const inputRef = useRef(null);
+
 
     const failedHeadwords = useRef(new Set()); // Track words that have been failed in this session
 
@@ -26,16 +26,24 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
         }
     }, [vocabulary]);
 
-    // Auto-focus input for spelling questions
+    // Auto-play audio moved to QuizQuestion or managed here? 
+    // QuizQuestion manages audio playback for buttons, but maybe not auto-play.
+    // Let's keep auto-play here for specific types if desired, OR let QuizQuestion handle it.
+    // For consistency, let's let QuizQuestion handle on mount if we add that prop.
+    // OR just keep it simple: QuizQuestion has buttons. Auto-play might be annoying if not expected.
+    // The previous code auto-played for 'audio-word' and 'audio-meaning'.
+    
     useEffect(() => {
         if (!isPreQuizReview && questions.length > 0 && !showScore) {
             const currentQ = questions[currentQuestionIndex];
-            if (currentQ.type === 'spelling' && inputRef.current) {
-                inputRef.current.focus();
-            }
-            // Auto-play audio if applicable
+             // Auto-play audio if applicable
             if ((currentQ.type === 'audio-word' || currentQ.type === 'audio-meaning') && currentQ.audioUrl) {
-                playAudio(currentQ.audioUrl);
+                // We can't easily auto-play from here without ref to audio element which is now unused or different.
+                // Let's rely on user clicking "play" for now, or play centrally.
+                 if (audioRef.current) {
+                    audioRef.current.src = currentQ.audioUrl;
+                    audioRef.current.play().catch(e => {});
+                 }
             }
         }
     }, [currentQuestionIndex, questions, showScore, isPreQuizReview]);
@@ -131,15 +139,21 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
                 });
             }
 
-            // 4. Audio -> Meaning (if audio exists)
-            if (hasAudio) {
+            // 4. Fill in the Blank (if examples exist)
+            const exampleSense = word.senses?.find(s => s.examples && s.examples.length > 0);
+            if (exampleSense) {
+                const exampleObj = exampleSense.examples[Math.floor(Math.random() * exampleSense.examples.length)];
+                const exampleText = typeof exampleObj === 'string' ? exampleObj : exampleObj.text;
+                const blankPrompt = exampleText.replace(new RegExp(word.headword, 'gi'), '_______');
+                
                 newQuestions.push({
                     wordObj: word,
-                    type: 'audio-meaning',
-                    audioUrl: word.phonetics[0].audioUrl,
-                    prompt: "Listen and choose the meaning",
-                    correctAnswer: definition,
-                    options: [definition, ...getRandomDistractors(otherWords, 3, 'definition')].sort(() => 0.5 - Math.random())
+                    type: 'fill_blank',
+                    prompt: blankPrompt,
+                    correctAnswer: word.headword,
+                    options: [word.headword, ...getRandomDistractors(otherWords, 3, 'headword')].sort(() => 0.5 - Math.random()),
+                    context: exampleSense.definition,
+                    headerText: 'Fill in the blank'
                 });
             }
 
@@ -164,7 +178,6 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
             setCurrentQuestionIndex(0);
             setScore(0);
             setSelectedAnswer(null);
-            setSpellingInput('');
             setFeedback(null);
             failedHeadwords.current.clear(); // Reset failed words tracking
         } else {
@@ -228,32 +241,32 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
             });
         }
 
+        const delay = (!isCorrect && currentQ.type === 'spelling') ? 3000 : 1500;
+
         setTimeout(() => {
             const nextQuestion = currentQuestionIndex + 1;
             if (nextQuestion < questions.length) {
                 setCurrentQuestionIndex(nextQuestion);
                 setSelectedAnswer(null);
-                setSpellingInput('');
                 setFeedback(null);
             } else {
                 setShowScore(true);
             }
-        }, 1500);
+        }, delay);
     };
 
-    const handleOptionSelect = (option) => {
+    const handleAnswer = (answer) => {
         if (selectedAnswer || feedback) return;
-        setSelectedAnswer(option);
+        
         const currentQ = questions[currentQuestionIndex];
-        processResult(option === currentQ.correctAnswer);
-    };
+        setSelectedAnswer(answer); // Track what they effectively chose/typed
 
-    const handleSpellingSubmit = (e) => {
-        e.preventDefault();
-        if (feedback) return;
-
-        const currentQ = questions[currentQuestionIndex];
-        const isCorrect = spellingInput.trim().toLowerCase() === currentQ.correctAnswer.toLowerCase();
+        let isCorrect = false;
+        if (currentQ.type === 'spelling') {
+             isCorrect = answer.trim().toLowerCase() === currentQ.correctAnswer.toLowerCase();
+        } else {
+             isCorrect = answer === currentQ.correctAnswer;
+        }
 
         processResult(isCorrect);
     };
@@ -354,8 +367,6 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
 
     // 4. Question Interface
     const currentQ = questions[currentQuestionIndex];
-    const isSpelling = currentQ.type === 'spelling';
-    const isAudio = currentQ.type.startsWith('audio');
 
     return (
         <div className="max-w-2xl mx-auto w-full">
@@ -364,148 +375,23 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
             <div className={`bg-white rounded-3xl shadow-xl overflow-hidden transition-all relative ${isReviewAhead ? 'border-4 border-orange-100' : ''}`}>
                 <button onClick={onExit} className="absolute top-6 right-6 text-gray-300 hover:text-gray-500 transition-colors"><X size={24} /></button>
 
-                <div className="p-8 md:p-12">
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-8">
+                <div className="pt-8 px-8 md:px-12 pb-0">
+                    {/* Header Score Row */}
+                    <div className="flex justify-between items-center mb-0">
                         <div>
                             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Question {currentQuestionIndex + 1} of {questions.length}</span>
                             {isReviewAhead && <span className="ml-2 text-[10px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold uppercase">Review Ahead</span>}
                         </div>
                         <div className="bg-blue-50 text-oxford-blue px-4 py-1.5 rounded-full text-sm font-bold shadow-sm">Score: {score}</div>
                     </div>
-
-                    {/* Content Component */}
-                    <div className="text-center mb-10">
-                        <h2 className="text-gray-400 text-sm font-medium mb-4 uppercase tracking-wide">{currentQ.type === 'spelling' ? 'Type the word for' : currentQ.prompt}</h2>
-
-                        {isAudio ? (
-                            <button
-                                onClick={() => playAudio(currentQ.audioUrl)}
-                                className="mx-auto w-20 h-20 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-full flex items-center justify-center transition-all animate-fade-in"
-                            >
-                                <Volume2 size={40} />
-                            </button>
-                        ) : (
-                            <div className="flex flex-col items-center gap-4">
-                                <h1 className={`${isSpelling ? 'text-2xl text-gray-700' : 'text-4xl md:text-5xl text-oxford-blue'} font-bold leading-tight`}>
-                                    {currentQ.prompt && !isAudio ? currentQ.prompt : ''}
-                                </h1>
-                                {currentQ.type === 'ipa' && currentQ.audioUrl && (
-                                    <button
-                                        onClick={() => playAudio(currentQ.audioUrl)}
-                                        className="w-12 h-12 bg-blue-100 hover:bg-blue-200 text-oxford-blue rounded-full flex items-center justify-center transition-all shadow-sm"
-                                        title="Listen"
-                                    >
-                                        <Volume2 size={24} />
-                                    </button>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Inputs/Options */}
-                    {!isSpelling ? (
-                        <div className="grid gap-3">
-                            {currentQ.options.map((option, index) => {
-                                let buttonClass = "w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 flex justify-between items-center group relative overflow-hidden ";
-                                const isSelected = selectedAnswer === option;
-                                const isCorrect = option === currentQ.correctAnswer;
-
-                                if (selectedAnswer) {
-                                    if (isSelected && isCorrect) buttonClass += "bg-green-50 border-green-500 text-green-900 shadow-sm z-10 scale-[1.02]";
-                                    else if (isSelected && !isCorrect) buttonClass += "bg-red-50 border-red-500 text-red-900 shadow-sm z-10 scale-[1.02]";
-                                    else if (isCorrect) buttonClass += "bg-green-50 border-green-300 text-green-800 opacity-100";
-                                    else buttonClass += "bg-gray-50 border-gray-100 opacity-30 grayscale blur-[1px]";
-                                } else {
-                                    buttonClass += "bg-white border-gray-100 hover:border-oxford-blue hover:bg-blue-50/30 hover:shadow-lg hover:-translate-y-0.5";
-                                }
-
-                                return (
-                                    <button
-                                        key={index}
-                                        onClick={() => handleOptionSelect(option)}
-                                        disabled={!!selectedAnswer}
-                                        className={buttonClass}
-                                    >
-                                        <span className="font-medium text-[16px] leading-snug relative z-10">{option}</span>
-                                        {selectedAnswer && isCorrect && <Check size={24} className="text-green-600 shrink-0 ml-4 relative z-10" />}
-                                        {selectedAnswer && isSelected && !isCorrect && <X size={24} className="text-red-600 shrink-0 ml-4 relative z-10" />}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    ) : (
-                        <form onSubmit={handleSpellingSubmit} className="max-w-md mx-auto relative flex flex-col items-center">
-                            {/* Hidden Input for handling typing logic simply */}
-                            <input
-                                ref={inputRef}
-                                type="text"
-                                value={spellingInput}
-                                onChange={(e) => setSpellingInput(e.target.value.slice(0, currentQ.correctAnswer.length))}
-                                disabled={!!feedback}
-                                className="opacity-0 absolute inset-0 w-full h-full cursor-default z-10"
-                                autoFocus
-                                autoComplete="off"
-                            />
-
-                            {/* Visual Boxes for Letters */}
-                            <div className="flex flex-wrap justify-center gap-2 mb-6">
-                                {currentQ.correctAnswer.split('').map((char, index) => {
-                                    const userChar = spellingInput[index] || '';
-                                    const isFilled = !!userChar;
-                                    const isCurrent = index === spellingInput.length;
-
-                                    let boxClass = "w-10 h-14 sm:w-12 sm:h-16 flex items-center justify-center text-3xl font-bold rounded-xl border-2 transition-all shadow-sm ";
-
-                                    if (feedback === 'correct') {
-                                        boxClass += "bg-green-100 border-green-500 text-green-700";
-                                    } else if (feedback === 'incorrect') {
-                                        boxClass += "bg-red-50 border-red-400 text-red-700";
-                                    } else if (isCurrent && !feedback) {
-                                        boxClass += "border-oxford-blue bg-blue-50/50 shadow-md ring-4 ring-blue-100/50 transform -translate-y-1";
-                                    } else if (isFilled) {
-                                        boxClass += "border-gray-300 bg-white text-gray-800";
-                                    } else {
-                                        boxClass += "border-gray-200 bg-gray-50/50 text-gray-300";
-                                    }
-
-                                    return (
-                                        <div key={index} className={boxClass}>
-                                            {feedback === 'incorrect' ? (
-                                                <span className="text-red-400 text-xl">{char}</span>
-                                            ) : (
-                                                userChar
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-
-                            {feedback === 'incorrect' && (
-                                <div className="text-center animate-fade-in mb-6">
-                                    <div className="bg-red-50 text-red-600 px-4 py-2 rounded-lg font-medium inline-block">
-                                        Answer: <span className="font-bold">{currentQ.correctAnswer}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {!feedback && (
-                                <div className="mt-2 text-gray-400 text-sm font-medium animate-pulse">
-                                    Type the word...
-                                </div>
-                            )}
-
-                            {/* Only show button if user thinks they are done? Or always? Hidden is cleaner with auto-submit logic but user might want button. 
-                                Providing a button below for clarity, mainly for "Give Up" or manual check if confused. 
-                                Actually, form submit on Enter works. */}
-                            {!feedback && spellingInput.length > 0 && (
-                                <button type="submit" className="mt-6 w-full max-w-xs bg-oxford-blue text-white py-3 rounded-xl font-bold hover:bg-blue-800 transition-colors z-20 shadow-lg shadow-blue-900/10">
-                                    Check Answer
-                                </button>
-                            )}
-                        </form>
-                    )}
                 </div>
+
+                <QuizQuestion 
+                    question={currentQ}
+                    feedback={feedback}
+                    selectedAnswer={selectedAnswer}
+                    onAnswer={handleAnswer}
+                />
             </div>
         </div>
     );

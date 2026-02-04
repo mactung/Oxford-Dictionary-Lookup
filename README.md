@@ -23,6 +23,21 @@ Transform your browsing experience into a language learning journey. Oxford Dict
     *   **Quick Access**: View and access your favorite bookmark folders directly from the new tab.
 *   **Audio Pronunciation**: Listen to correct British and American pronunciations.
 
+### Supported Quiz Types
+The extension provides diverse exercise formats to help you master words from multiple angles:
+
+**Daily Practice (New Tab)**:
+*   **Meaning**: Choose the correct definition for a given word.
+*   **Spelling**: Type the correct word for a given definition (letters persist in boxes for better feedback).
+*   **Audio-to-Word**: Listen to the pronunciation and identify the word.
+*   **Fill in the Blank**: Choose the correct word to complete an example sentence.
+*   **IPA**: Identify the correct phonetic transcription.
+
+**Random Practice (Popup)**:
+*   **Meaning**: Quick checks for definitions.
+*   **IPA**: Quick checks for pronunciation.
+*   **Fill in the Blank**: Quick context checks.
+
 ---
 
 ## Changelog
