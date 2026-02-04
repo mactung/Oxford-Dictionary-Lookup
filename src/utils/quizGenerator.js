@@ -23,6 +23,7 @@ export function generateRandomQuestion(vocab, history = { lastWord: null, dailyC
         // 2. Limit daily appearance (max 2)
         const dayRecord = history.dailyCounts[today] || {};
         const count = dayRecord[w.headword] || 0;
+        // console.log(`Checking ${w.headword}: count=${count}, today=${today}`);
         if (count >= 2) return false;
 
         return true;
@@ -39,9 +40,19 @@ export function generateRandomQuestion(vocab, history = { lastWord: null, dailyC
     const word = filteredCandidates[Math.floor(Math.random() * filteredCandidates.length)];
 
     // New History Object to Return
-    const newHistory = { ...history };
+    const newHistory = { 
+        ...history, 
+        dailyCounts: { ...history.dailyCounts } 
+    };
     newHistory.lastWord = word.headword;
-    if (!newHistory.dailyCounts[today]) newHistory.dailyCounts[today] = {};
+    
+    // Deep copy the specific day record before mutating
+    if (!newHistory.dailyCounts[today]) {
+        newHistory.dailyCounts[today] = {};
+    } else {
+        newHistory.dailyCounts[today] = { ...newHistory.dailyCounts[today] };
+    }
+    
     newHistory.dailyCounts[today][word.headword] = (newHistory.dailyCounts[today][word.headword] || 0) + 1;
 
     // Prune old history

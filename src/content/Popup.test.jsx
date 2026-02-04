@@ -28,7 +28,7 @@ describe('Popup', () => {
 
     it('should render data after fetch', async () => {
         chrome.runtime.sendMessage.mockImplementation((msg, cb) => {
-            cb({ success: true, html: '<div>mock html</div>' });
+            if (cb) cb({ success: true, html: '<div>mock html</div>' });
         });
 
         render(<Popup x={0} y={0} word="test" onClose={() => { }} />);
@@ -50,7 +50,7 @@ describe('Popup', () => {
 
         // Mock fetch success
         chrome.runtime.sendMessage.mockImplementation((msg, cb) => {
-            cb({ success: true, html: '<div>mock html</div>' });
+            if (cb) cb({ success: true, html: '<div>mock html</div>' });
         });
 
         render(<Popup x={0} y={0} word="test" onClose={() => { }} />);
