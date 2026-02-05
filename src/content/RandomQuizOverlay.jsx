@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { X, Clock, Check, Brain, Volume2 } from 'lucide-react';
 import QuizQuestion from '../components/QuizQuestion';
 import { generateRandomQuestion } from '../utils/quizGenerator';
+import { updateSRS } from '../utils/srs';
 
 export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
     const [questions, setQuestions] = useState([]);
@@ -12,18 +13,22 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
     const [showResult, setShowResult] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [feedback, setFeedback] = useState(null); // 'correct' | 'incorrect'
+    
+    // Track SRS Progress for the current session's generated word (though we only load 1 question)
+    const [currentProgress, setCurrentProgress] = useState([]);
 
     // Load vocabulary on mount
     useEffect(() => {
-        chrome.storage.local.get(['vocabulary', 'randomHistory'], (result) => {
+        chrome.storage.local.get(['vocabulary', 'randomHistory', 'srsProgress'], (result) => {
             if (result.vocabulary) {
-                generateQuestions(result.vocabulary, result.randomHistory);
+                generateQuestions(result.vocabulary, result.randomHistory, result.srsProgress || {});
             }
         });
     }, []);
 
-    const generateQuestions = (vocab, history) => {
-        const result = generateRandomQuestion(vocab, history);
+    const generateQuestions = (vocab, history, srsProgress) => {
+        // Pass srsProgress to generator
+        const result = generateRandomQuestion(vocab, history, srsProgress);
         
         if (result && result.question) {
             console.log('RandomQuizOverlay: Question set', result.question);
@@ -40,8 +45,9 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
         if (feedback) return;
         setSelectedAnswer(option);
 
-        const currentQ = questions[currentIndex];
+        const currentQ = questions[0]; // We only have 1 question now
         const isCorrect = option === currentQ.correctAnswer;
+        const headword = currentQ.wordObj.headword;
 
         if (isCorrect) {
             setScore(prev => prev + 1);
@@ -49,6 +55,67 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
         } else {
             setFeedback('incorrect');
         }
+
+        // --- Persistent SRS Logic ---
+        chrome.storage.local.get(['vocabulary', 'srsProgress'], (result) => {
+            let progress = result.srsProgress || {};
+            let wordProgress = progress[headword] || [];
+            
+            // Determine ALL expected types for this word
+            const allTypes = ['meaning', 'spelling'];
+            if (currentQ.wordObj.phonetics && currentQ.wordObj.phonetics.some(p => p.ipa)) {
+                allTypes.push('ipa');
+            }
+
+            if (isCorrect) {
+                // Add current type to progress if not already there
+                if (!wordProgress.includes(currentQ.type)) {
+                    wordProgress.push(currentQ.type);
+                }
+
+                // Check if ALL types are now done
+                const isComplete = allTypes.every(t => wordProgress.includes(t));
+
+                if (isComplete) {
+                    console.log(`Word ${headword} fully mastered across sessions.`);
+                    // Update SRS Level (Success)
+                     if (result.vocabulary) {
+                        const updatedVocab = result.vocabulary.map(w => {
+                            if (w.headword === headword) return updateSRS(w, true);
+                            return w;
+                        });
+                        chrome.storage.local.set({ vocabulary: updatedVocab }, () => {
+                             chrome.runtime.sendMessage({ action: 'syncToCloud', data: 'srs_update' });
+                        });
+                    }
+                    // Reset progress for this word since it's now advanced
+                    delete progress[headword];
+                } else {
+                    console.log(`Word ${headword} partial progress: ${wordProgress.join(', ')}`);
+                    // Just save progress
+                    progress[headword] = wordProgress;
+                }
+            } else {
+                console.log(`Word ${headword} failed. Resetting progress and SRS.`);
+                // 1. Reset Progress
+                delete progress[headword];
+
+                // 2. Reset SRS Level to 0 (Failure)
+                if (result.vocabulary) {
+                    const updatedVocab = result.vocabulary.map(w => {
+                        if (w.headword === headword) return updateSRS(w, false);
+                        return w;
+                    });
+                    chrome.storage.local.set({ vocabulary: updatedVocab }, () => {
+                         chrome.runtime.sendMessage({ action: 'syncToCloud', data: 'srs_update' });
+                    });
+                }
+            }
+
+            // Save global progress map
+            chrome.storage.local.set({ srsProgress: progress });
+        });
+        // -----------------------------
 
         setTimeout(() => {
             setShowResult(true);
@@ -115,9 +182,9 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
 
     return (
         <div className="fixed inset-0 z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
-            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md relative animate-slide-up">
+            <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md relative animate-slide-up flex flex-col max-h-[85vh]">
                 {/* Header */}
-                <div className="bg-oxford-blue px-6 py-4 flex items-center justify-between">
+                <div className="bg-oxford-blue px-6 py-4 flex items-center justify-between shrink-0">
                     <div className="flex items-center gap-2 text-white">
                         <Brain size={20} className="text-blue-300" />
                         <span className="font-bold text-base">Quick Vocabulary Check</span>
@@ -127,15 +194,17 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
                     </button>
                 </div>
 
-                {/* Content */}
-                <QuizQuestion 
-                    question={currentQ}
-                    feedback={feedback}
-                    selectedAnswer={selectedAnswer}
-                    onAnswer={handleAnswer}
-                />
-                <div className="px-6 pb-6">
-                     <FooterActions />
+                {/* Content Container - Scrollable */}
+                <div className="overflow-y-auto custom-scrollbar flex-1">
+                    <QuizQuestion 
+                        question={currentQ}
+                        feedback={feedback}
+                        selectedAnswer={selectedAnswer}
+                        onAnswer={handleAnswer}
+                    />
+                    <div className="px-6 pb-6 mt-4">
+                         <FooterActions />
+                    </div>
                 </div>
             </div>
         </div>

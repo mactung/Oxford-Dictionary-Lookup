@@ -1,12 +1,12 @@
-export function generateRandomQuestion(vocab, history = { lastWord: null, dailyCounts: {} }) {
+export function generateRandomQuestion(vocab, history = { lastWord: null, dailyCounts: {} }, srsProgress = {}) {
     if (!vocab || vocab.length < 4) {
         console.log('QuizGenerator: Not enough vocab (needs 4+)');
         return null;
     }
 
     const now = Date.now();
-    // Filter due words
-    let candidates = vocab.filter(w => !w.nextReview || w.nextReview <= now);
+    // Filter due words OR words currently being learned (srsLevel 0)
+    let candidates = vocab.filter(w => (!w.nextReview || w.nextReview <= now) || (w.srsLevel === 0));
 
     // If no due words, pick from all
     if (candidates.length === 0) {
@@ -64,12 +64,20 @@ export function generateRandomQuestion(vocab, history = { lastWord: null, dailyC
     }
 
 
-    // Determine Type
-    const types = ['meaning'];
-    if (word.phonetics && word.phonetics.some(p => p.ipa)) types.push('ipa');
-    if (word.senses && word.senses.some(s => s.examples && s.examples.length > 0)) types.push('fill_blank');
+    // Determine All Valid Types
+    const allTypes = ['meaning'];
+    if (word.phonetics && word.phonetics.some(p => p.ipa)) allTypes.push('ipa');
+    allTypes.push('spelling'); 
+    
+    // Filter types based on Progress
+    const completedTypes = srsProgress[word.headword] || [];
+    const availableTypes = allTypes.filter(t => !completedTypes.includes(t));
 
-    const type = types[Math.floor(Math.random() * types.length)];
+    // If all types completed (edge case, should have been cleared), reset available
+    const typesToChoose = availableTypes.length > 0 ? availableTypes : allTypes;
+
+    // Pick ONE type
+    const type = typesToChoose[Math.floor(Math.random() * typesToChoose.length)];
     let question = null;
 
     if (type === 'ipa') {
@@ -96,28 +104,15 @@ export function generateRandomQuestion(vocab, history = { lastWord: null, dailyC
             headerText: 'Choose the correct pronunciation'
         };
 
-    } else if (type === 'fill_blank') {
-        const sense = word.senses.find(s => s.examples && s.examples.length > 0);
-        const exampleObj = sense.examples[Math.floor(Math.random() * sense.examples.length)];
-        const exampleText = typeof exampleObj === 'string' ? exampleObj : exampleObj.text;
-        
-        const prompt = exampleText.replace(new RegExp(word.headword, 'gi'), '_______');
-        const correct = word.headword;
-        
-        const otherWords = vocab.filter(w => w.headword !== word.headword);
-        let distractors = otherWords.sort(() => 0.5 - Math.random()).slice(0, 3).map(w => w.headword);
-         while (distractors.length < 3) distractors.push('something'); 
-
-        const options = [correct, ...distractors].sort(() => 0.5 - Math.random());
+    } else if (type === 'spelling') {
+        const definition = word.senses?.[0]?.definition || 'No definition';
         
         question = {
             wordObj: word,
-            type: 'fill_blank',
-            prompt: prompt, 
-            correctAnswer: correct,
-            options: options,
-            headerText: 'Fill in the blank',
-            context: sense.definition
+            type: 'spelling',
+            prompt: definition,
+            correctAnswer: word.headword,
+            headerText: 'Type the correct word'
         };
 
     } else {
@@ -129,7 +124,7 @@ export function generateRandomQuestion(vocab, history = { lastWord: null, dailyC
 
         const options = [definition, ...distractors].sort(() => 0.5 - Math.random());
 
-         question = {
+        question = {
             wordObj: word,
             type: 'meaning',
             prompt: word.headword,

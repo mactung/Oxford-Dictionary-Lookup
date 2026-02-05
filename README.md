@@ -36,7 +36,7 @@ The extension provides diverse exercise formats to help you master words from mu
 **Random Practice (Popup)**:
 *   **Meaning**: Quick checks for definitions.
 *   **IPA**: Quick checks for pronunciation.
-*   **Fill in the Blank**: Quick context checks.
+*   **Spelling**: Type the correct word for a given definition.
 
 ---
 

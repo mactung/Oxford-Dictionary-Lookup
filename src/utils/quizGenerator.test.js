@@ -57,24 +57,69 @@ describe('quizGenerator', () => {
         }
     });
 
-    it('should generate fill_blank question if examples exist', () => {
-        // Only word1 has examples, so if we force fill_blank it must be word1.
-        // However, the function chooses type randomly.
-        // Let's just check that IF we get fill_blank, it has correct structure.
+    it('should include words with srsLevel 0 even if not due', () => {
+        const futureDate = Date.now() + 86400000; // Tomorrow
+        const mockVocabWithSRS = [
+            {
+                headword: 'learningWord',
+                senses: [{ definition: 'def' }],
+                phonetics: [],
+                srsLevel: 0,
+                nextReview: futureDate // Not due yet
+            },
+            {
+                headword: 'masteredWord',
+                senses: [{ definition: 'def' }],
+                phonetics: [],
+                srsLevel: 5,
+                nextReview: futureDate // Not due yet
+            },
+            { headword: 'dummy1', senses: [{ definition: 'd' }], phonetics: [], srsLevel: 3, nextReview: futureDate },
+            { headword: 'dummy2', senses: [{ definition: 'd' }], phonetics: [], srsLevel: 3, nextReview: futureDate }
+        ];
+
+        // Should pick learningWord because srsLevel is 0
+        // Should NOT pick masteredWord because it's not due and srsLevel > 0
         
-        let found = false;
-        // Try enough times to likely hit it
-        for (let i = 0; i < 50; i++) {
-             const result = generateRandomQuestion(mockVocab, { lastWord: null, dailyCounts: {} });
-             if (result && result.question.type === 'fill_blank') {
-                 found = true;
-                 expect(result.question.prompt).toContain('_______');
-                 expect(result.question.correctAnswer).toBe(result.question.wordObj.headword);
-                 expect(result.question.context).toBeDefined();
-                 break;
+        let checkedCount = 0;
+        for (let i = 0; i < 10; i++) {
+            const result = generateRandomQuestion(mockVocabWithSRS, { lastWord: null, dailyCounts: {} });
+            if (result) {
+                expect(result.question.wordObj.headword).toBe('learningWord');
+                checkedCount++;
+            }
+        }
+        expect(checkedCount).toBeGreaterThan(0);
+    });
+
+    it('should filter out completed types based on srsProgress', () => {
+        // Only word1 allows IPA
+        const progress = { 'word1': ['meaning', 'spelling'] };
+        // So only 'ipa' should be left (or it forces IPA if available)
+        
+        // We need to force picking word1, but still have enough vocab to run
+        const mockVocabSingle = [
+            mockVocab[0], // word1
+            { headword: 'dummy1', senses: [{ definition: 'd' }], phonetics: [], srsLevel: 3 },
+            { headword: 'dummy2', senses: [{ definition: 'd' }], phonetics: [], srsLevel: 3 },
+            { headword: 'dummy3', senses: [{ definition: 'd' }], phonetics: [], srsLevel: 3 }
+        ];
+        
+        // The generator picks from filtered candidates. 
+        // We need to make sure dummies are NOT picked if we want to test word1 specifically.
+        // Or we just check that IF word1 is picked, it is IPA.
+        // Dummies are not 'Due' (undefined nextReview means due? In code: (!w.nextReview || ...) so yes.
+        // Let's make dummies NOT due.
+        const future = Date.now() + 99999999;
+        mockVocabSingle.forEach((w, i) => { if (i>0) w.nextReview = future; });
+        // word1 nextReview undefined -> due.
+        
+        for (let i = 0; i < 20; i++) {
+             const result = generateRandomQuestion(mockVocabSingle, { lastWord: null, dailyCounts: {} }, progress);
+             if (result && result.question.wordObj.headword === 'word1') {
+                 expect(result.question.type).toBe('ipa');
              }
         }
-        // Ideally we'd mock Math.random to force it, but this statistical check is okay for now.
     });
 
     it('should avoid immediate repeat of last word', () => {

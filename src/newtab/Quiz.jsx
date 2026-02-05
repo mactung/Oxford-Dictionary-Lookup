@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Check, X, Clock, Brain, Volume2, ArrowRight, Play } from 'lucide-react';
 import QuizQuestion from '../components/QuizQuestion';
+import { calculateNextReview, updateSRS } from '../utils/srs';
 
 export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
     const [questions, setQuestions] = useState([]);
@@ -52,19 +53,6 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
         if (audioRef.current && url) {
             audioRef.current.src = url;
             audioRef.current.play().catch(e => console.log("Audio play failed", e));
-        }
-    };
-
-    const calculateNextReview = (level) => {
-        const now = Date.now();
-        const days = 24 * 60 * 60 * 1000;
-
-        switch (level) {
-            case 0: return now + 1 * days;
-            case 1: return now + 3 * days;
-            case 2: return now + 7 * days;
-            case 3: return now + 14 * days;
-            default: return now + (level * 7) * days;
         }
     };
 
@@ -220,25 +208,15 @@ export default function Quiz({ vocabulary, onUpdateWord, onExit }) {
                     nextReview: calculateNextReview(0)
                 });
             } else {
-                // Determine new level based on current snapshot
-                const currentLevel = currentQ.wordObj.srsLevel || 0;
-                const newLevel = currentLevel + 1;
-                onUpdateWord({
-                    ...currentQ.wordObj,
-                    srsLevel: newLevel,
-                    nextReview: calculateNextReview(newLevel)
-                });
+                // Use shared helper
+                onUpdateWord(updateSRS(currentQ.wordObj, true));
             }
         } else {
             // Mark word as failed for the rest of this session
             failedHeadwords.current.add(headword);
 
             setFeedback('incorrect');
-            onUpdateWord({
-                ...currentQ.wordObj,
-                srsLevel: 0,
-                nextReview: calculateNextReview(0)
-            });
+            onUpdateWord(updateSRS(currentQ.wordObj, false));
         }
 
         const delay = (!isCorrect && currentQ.type === 'spelling') ? 3000 : 1500;

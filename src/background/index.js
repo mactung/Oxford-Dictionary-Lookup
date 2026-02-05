@@ -137,35 +137,63 @@ function triggerQuizInActiveTab(specificTabId = null) {
 
 // --- Dictionary Sync (Developer Tool) ---
 const SYNC_SERVER_URL = `${API_BASE_URL}/sync`;
+const USER_SYNC_URL = `${API_BASE_URL}/user/sync`;
 
 function syncDataToCloud(data) {
-    console.log('Syncing data to cloud:', data.headword);
-    
-    fetch(SYNC_SERVER_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(data)
-    })
-    .then(response => {
-        if (response.ok) {
-            console.log('Sync success for:', data.headword);
-        } else {
-            console.log('Sync failed status:', response.status);
-        }
-    })
-    .catch(error => {
-        console.log('Sync connection error (Server likely offline):', error.message);
-    });
-}
+    // 1. Dictionary Entry Sync (Object with headword)
+    if (typeof data === 'object' && data.headword) {
+        console.log('Syncing dictionary entry:', data.headword);
+        fetch(SYNC_SERVER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        }).then(res => {
+            if (res.ok) console.log('Dict Sync success:', data.headword);
+            else console.log('Dict Sync failed:', res.status);
+        }).catch(err => console.log('Dict Sync error:', err.message));
+        return;
+    }
 
-// --- Message Handling ---
+    // 2. User SRS Sync (Trigger String)
+    if (data === 'srs_update') {
+        console.log('Triggering User SRS Sync...');
+        chrome.storage.local.get(['vocabulary', 'authToken'], (result) => {
+            const { vocabulary, authToken } = result;
+
+            if (!authToken) {
+                console.log('User Sync: No auth token, skipping.');
+                return;
+            }
+            if (!vocabulary) {
+                console.log('User Sync: No vocabulary to sync.');
+                return;
+            }
+
+            fetch(USER_SYNC_URL, {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                },
+                body: JSON.stringify({ vocabulary })
+            })
+            .then(res => res.json())
+            .then(json => {
+                if (json.success) console.log('User SRS Sync success.');
+                else console.log('User SRS Sync failed:', json.error);
+            })
+            .catch(err => console.log('User SRS Sync connection error:', err.message));
+        });
+        return;
+    }
+    
+    console.log('Unknown sync data type:', data);
+}
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'syncToCloud') {
         syncDataToCloud(request.data);
-        return false;
+        return false; // Async not needed (fire and forget)
     }
 
     if (request.action === 'fetchDefinition') {
