@@ -118,13 +118,13 @@ export default function QuizQuestion({ question, feedback, selectedAnswer, onAns
                             autoComplete="off"
                         />
 
-                        <div className="flex flex-wrap justify-center gap-2 mb-6">
+                        <div className="flex flex-nowrap overflow-x-auto py-4 px-2 justify-center gap-2 mb-6 w-full custom-scrollbar">
                             {question.correctAnswer.split('').map((char, index) => {
                                 const userChar = spellingInput[index] || '';
                                 const isFilled = !!userChar;
                                 const isCurrent = index === spellingInput.length;
 
-                                let boxClass = "w-10 h-14 sm:w-12 sm:h-16 flex items-center justify-center text-3xl font-bold rounded-xl border-2 transition-all shadow-sm ";
+                                let boxClass = "w-10 h-14 sm:w-12 sm:h-16 shrink-0 flex items-center justify-center text-3xl font-bold rounded-xl border-2 transition-all shadow-sm ";
 
                                 if (feedback === 'correct') {
                                     boxClass += "bg-green-100 border-green-500 text-green-700";
