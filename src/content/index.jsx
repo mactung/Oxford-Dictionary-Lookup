@@ -23,8 +23,7 @@ function getHost() {
         host.style.zIndex = '2147483647';
         host.style.top = '0px';
         host.style.left = '0px';
-        // host.style.width = '0px'; // Minimize impact
-        // host.style.height = '0px';
+        host.style.fontSize = '16px'; // Reset font-size to prevent rem-based sizing issues
         document.body.appendChild(host);
 
         shadowRoot = host.attachShadow({ mode: 'open' });
@@ -56,6 +55,14 @@ function removeHost() {
         reactRoot = null;
         shadowRoot = null;
     }
+}
+
+// Reset host to default absolute positioning (for popup use)
+function resetHostToAbsolute(host) {
+    host.style.position = 'absolute';
+    host.style.width = '';
+    host.style.height = '';
+    host.style.pointerEvents = '';
 }
 
 // Global state for simple icon handling
@@ -111,6 +118,8 @@ const mountPopup = (x, y, text) => {
     }
     const { host, reactRoot } = hostData;
     host.dataset.type = 'popup'; // Tag as popup
+    // Ensure host is in absolute mode for popups (positioned near word)
+    resetHostToAbsolute(host);
     reactRoot.render(<Popup x={x} y={y} word={text} onClose={removeHost} />);
 };
 
@@ -137,6 +146,15 @@ const mountRandomQuiz = () => {
     const { host, reactRoot } = hostData;
 
     host.dataset.type = 'quiz'; // Tag as quiz
+
+    // Switch to fixed positioning covering full viewport for quiz overlay
+    // This prevents parent transforms/zoom from affecting the overlay size
+    host.style.position = 'fixed';
+    host.style.top = '0';
+    host.style.left = '0';
+    host.style.width = '100vw';
+    host.style.height = '100vh';
+    host.style.pointerEvents = 'auto';
 
     console.log('Content Script: Rendering RandomQuizOverlay');
     reactRoot.render(

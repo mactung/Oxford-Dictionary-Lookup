@@ -151,7 +151,7 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
 
     if (showResult) {
         return (
-            <div className="fixed inset-0 z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
+            <div className="absolute inset-0 w-full h-full z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
                 <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-full max-w-sm relative animate-scale-up">
                     <div className="text-center">
                         <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${feedback === 'correct' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
@@ -181,7 +181,7 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
     const currentQ = questions[currentIndex];
 
     return (
-        <div className="fixed inset-0 z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
+        <div className="absolute inset-0 w-full h-full z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
             <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden w-full max-w-md relative animate-slide-up flex flex-col max-h-[85vh]">
                 {/* Header */}
                 <div className="bg-oxford-blue px-6 py-4 flex items-center justify-between shrink-0">
