@@ -118,13 +118,21 @@ export default function QuizQuestion({ question, feedback, selectedAnswer, onAns
                             autoComplete="off"
                         />
 
-                        <div className="flex flex-nowrap overflow-x-auto py-4 px-2 justify-center gap-2 mb-6 w-full custom-scrollbar">
+                        <div className="flex flex-nowrap py-4 px-2 justify-center mb-6 w-full" style={{ gap: question.correctAnswer.length > 8 ? '4px' : '8px' }}>
                             {question.correctAnswer.split('').map((char, index) => {
                                 const userChar = spellingInput[index] || '';
                                 const isFilled = !!userChar;
                                 const isCurrent = index === spellingInput.length;
+                                const len = question.correctAnswer.length;
 
-                                let boxClass = "w-10 h-14 sm:w-12 sm:h-16 shrink-0 flex items-center justify-center text-3xl font-bold rounded-xl border-2 transition-all shadow-sm ";
+                                // Dynamic sizing based on word length
+                                const boxSize = len <= 6 ? { width: 44, height: 52, fontSize: 22 }
+                                    : len <= 8 ? { width: 38, height: 46, fontSize: 20 }
+                                    : len <= 10 ? { width: 32, height: 40, fontSize: 18 }
+                                    : len <= 12 ? { width: 28, height: 36, fontSize: 16 }
+                                    : { width: 24, height: 32, fontSize: 14 };
+
+                                let boxClass = "shrink-0 flex items-center justify-center font-bold rounded-lg border-2 transition-all shadow-sm ";
 
                                 if (feedback === 'correct') {
                                     boxClass += "bg-green-100 border-green-500 text-green-700";
@@ -139,9 +147,14 @@ export default function QuizQuestion({ question, feedback, selectedAnswer, onAns
                                 }
 
                                 return (
-                                    <div key={index} className={boxClass}>
+                                    <div key={index} className={boxClass} style={{
+                                        width: boxSize.width,
+                                        height: boxSize.height,
+                                        fontSize: boxSize.fontSize,
+                                        lineHeight: 1,
+                                    }}>
                                         {feedback === 'incorrect' ? (
-                                            <span className="text-red-400 text-xl">{char}</span>
+                                            <span style={{ fontSize: boxSize.fontSize - 2 }} className="text-red-400">{char}</span>
                                         ) : (
                                             userChar
                                         )}
