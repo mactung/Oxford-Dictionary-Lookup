@@ -1,7 +1,7 @@
 // in RandomQuizOverlay.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Clock, Check, Brain, Volume2 } from 'lucide-react';
+import { X, Clock, Brain, Volume2 } from 'lucide-react';
 import QuizQuestion from '../components/QuizQuestion';
 import { generateRandomQuestion } from '../utils/quizGenerator';
 import { updateSRS } from '../utils/srs';
@@ -13,7 +13,7 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
     const [showResult, setShowResult] = useState(false);
     const [selectedAnswer, setSelectedAnswer] = useState(null);
     const [feedback, setFeedback] = useState(null); // 'correct' | 'incorrect'
-    
+
     // Track SRS Progress for the current session's generated word (though we only load 1 question)
     const [currentProgress, setCurrentProgress] = useState([]);
 
@@ -29,15 +29,15 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
     const generateQuestions = (vocab, history, srsProgress) => {
         // Pass srsProgress to generator
         const result = generateRandomQuestion(vocab, history, srsProgress);
-        
+
         if (result && result.question) {
             console.log('RandomQuizOverlay: Question set', result.question);
             setQuestions([result.question]);
-            
+
             // Save updated history
             chrome.storage.local.set({ randomHistory: result.newHistory });
         } else {
-             console.log('RandomQuizOverlay: No question generated');
+            console.log('RandomQuizOverlay: No question generated');
         }
     };
 
@@ -60,7 +60,7 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
         chrome.storage.local.get(['vocabulary', 'srsProgress'], (result) => {
             let progress = result.srsProgress || {};
             let wordProgress = progress[headword] || [];
-            
+
             // Determine ALL expected types for this word
             const allTypes = ['meaning', 'spelling'];
             if (currentQ.wordObj.phonetics && currentQ.wordObj.phonetics.some(p => p.ipa)) {
@@ -79,13 +79,13 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
                 if (isComplete) {
                     console.log(`Word ${headword} fully mastered across sessions.`);
                     // Update SRS Level (Success)
-                     if (result.vocabulary) {
+                    if (result.vocabulary) {
                         const updatedVocab = result.vocabulary.map(w => {
                             if (w.headword === headword) return updateSRS(w, true);
                             return w;
                         });
                         chrome.storage.local.set({ vocabulary: updatedVocab }, () => {
-                             chrome.runtime.sendMessage({ action: 'syncToCloud', data: 'srs_update' });
+                            chrome.runtime.sendMessage({ action: 'syncToCloud', data: 'srs_update' });
                         });
                     }
                     // Reset progress for this word since it's now advanced
@@ -107,7 +107,7 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
                         return w;
                     });
                     chrome.storage.local.set({ vocabulary: updatedVocab }, () => {
-                         chrome.runtime.sendMessage({ action: 'syncToCloud', data: 'srs_update' });
+                        chrome.runtime.sendMessage({ action: 'syncToCloud', data: 'srs_update' });
                     });
                 }
             }
@@ -118,7 +118,13 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
         // -----------------------------
 
         setTimeout(() => {
-            setShowResult(true);
+            if (isCorrect) {
+                // Auto-close when correct — no extra modal needed
+                onClose();
+            } else {
+                // Only show result modal for incorrect answers
+                setShowResult(true);
+            }
         }, 1000);
     };
 
@@ -154,18 +160,16 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
             <div className="absolute inset-0 w-full h-full z-[2147483647] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in font-sans">
                 <div className="bg-white rounded-2xl shadow-2xl border border-gray-200 p-6 w-full max-w-sm relative animate-scale-up">
                     <div className="text-center">
-                        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 ${feedback === 'correct' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                            {feedback === 'correct' ? <Check size={32} /> : <X size={32} />}
+                        <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-red-100 text-red-600">
+                            <X size={32} />
                         </div>
                         <h3 className="text-xl font-bold text-gray-800 mb-2">
-                            {feedback === 'correct' ? 'Excellent!' : 'Needs Review'}
+                            Needs Review
                         </h3>
-                        {feedback !== 'correct' && (
-                            <div className="mb-4 bg-red-50 p-3 rounded-lg text-sm text-red-800">
-                                <strong>Correct Meaning:</strong><br />
-                                {questions[0].correctAnswer}
-                            </div>
-                        )}
+                        <div className="mb-4 bg-red-50 p-3 rounded-lg text-sm text-red-800">
+                            <strong>Correct Meaning:</strong><br />
+                            {questions[0].correctAnswer}
+                        </div>
                         <button
                             onClick={onClose}
                             className="w-full bg-oxford-blue text-white py-3 rounded-xl font-bold hover:bg-blue-800 transition-colors shadow-lg shadow-blue-900/10"
@@ -196,14 +200,14 @@ export default function RandomQuizOverlay({ onClose, onSnooze, onTurnOff }) {
 
                 {/* Content Container - Scrollable */}
                 <div className="overflow-y-auto custom-scrollbar flex-1">
-                    <QuizQuestion 
+                    <QuizQuestion
                         question={currentQ}
                         feedback={feedback}
                         selectedAnswer={selectedAnswer}
                         onAnswer={handleAnswer}
                     />
                     <div className="px-6 pb-6 mt-4">
-                         <FooterActions />
+                        <FooterActions />
                     </div>
                 </div>
             </div>
