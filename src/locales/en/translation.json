@@ -1,0 +1,19 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error occurred",
+    "save": "Save",
+    "cancel": "Cancel",
+    "settings": "Settings"
+  },
+  "popup": {
+    "title": "Oxford Dictionary Lookup",
+    "searchPlaceholder": "Search for a word...",
+    "noResults": "No results found."
+  },
+  "newtab": {
+    "title": "Vocabulary Builder",
+    "practice": "Practice",
+    "history": "History"
+  }
+}

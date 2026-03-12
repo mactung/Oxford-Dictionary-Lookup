@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Oxford Dictionary Lookup",
+    "description": "Name of the extension"
+  },
+  "appDesc": {
+    "message": "Instant Oxford Dictionary lookup, vocabulary builder, and smart practice quizzes.",
+    "description": "Description of the extension"
+  }
+}

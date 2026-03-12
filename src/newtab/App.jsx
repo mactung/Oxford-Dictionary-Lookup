@@ -66,6 +66,14 @@ export default function App() {
             }
         });
 
+        const forceLogoutHandler = () => {
+            setUser(null);
+            setToken(null);
+        };
+        window.addEventListener('force-logout', forceLogoutHandler);
+
+        return () => window.removeEventListener('force-logout', forceLogoutHandler);
+
         // Load saved folder selection
         chrome.storage.local.get(['selectedFolderId'], (result) => {
             if (result.selectedFolderId) {

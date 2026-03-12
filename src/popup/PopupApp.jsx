@@ -20,6 +20,13 @@ export default function PopupApp() {
                 setToken(result.token);
             }
         });
+
+        const forceLogoutHandler = () => {
+            setToken(null);
+        };
+        window.addEventListener('force-logout', forceLogoutHandler);
+
+        return () => window.removeEventListener('force-logout', forceLogoutHandler);
     }, []);
 
 

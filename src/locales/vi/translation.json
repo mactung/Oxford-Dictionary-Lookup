@@ -1,0 +1,19 @@
+{
+  "common": {
+    "loading": "Đang tải...",
+    "error": "Có lỗi xảy ra",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "settings": "Cài đặt"
+  },
+  "popup": {
+    "title": "Tra từ điển Oxford",
+    "searchPlaceholder": "Tìm kiếm từ vựng...",
+    "noResults": "Không tìm thấy kết quả."
+  },
+  "newtab": {
+    "title": "Luyện tập từ vựng",
+    "practice": "Luyện tập",
+    "history": "Lịch sử"
+  }
+}

@@ -14,6 +14,10 @@ const copyExtensionUtils = () => {
             if (await fs.pathExists('src/assets/icons')) {
                 await fs.copy('src/assets/icons', 'dist/icons');
             }
+            // Copy locales
+            if (await fs.pathExists('src/_locales')) {
+                await fs.copy('src/_locales', 'dist/_locales');
+            }
         }
     }
 }

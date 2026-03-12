@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "Tra từ điển Oxford",
+    "description": "Name of the extension"
+  },
+  "appDesc": {
+    "message": "Tra cứu từ điển Oxford tức thì, xây dựng vốn từ vựng và bài tập trắc nghiệm thông minh.",
+    "description": "Description of the extension"
+  }
+}

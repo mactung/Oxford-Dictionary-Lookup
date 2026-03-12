@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import Popup from './Popup';
 import RandomQuizOverlay from './RandomQuizOverlay';
+import '../i18n'; // Initialize i18n
 
 const HOST_ID = 'oxford-lookup-host';
 
