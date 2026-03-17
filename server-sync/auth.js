@@ -1,10 +1,10 @@
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcrypt';
 
 const SALT_ROUNDS = 10;
 const SECRET_KEY = process.env.JWT_SECRET || 'oxford-lookup-secret-key-change-me';
 
-module.exports = function(app, pool) {
+export default function(app, pool) {
     
     // Register
     app.post('/api/auth/register', async (req, res) => {

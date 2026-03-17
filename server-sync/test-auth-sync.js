@@ -1,6 +1,4 @@
-const fetch = require('node-fetch'); // You might need to install this if not native in node 18+ yet, but let's try assuming native or installing.
-// Actually, node 18+ has native fetch. I'll assume node env is modern enough or use axios/http.
-// Let's use simple http for zero-dep or just use the fact that I can run 'npm install node-fetch'
+// Node 18+ has native fetch.
 
 const BASE_URL = 'http://localhost:3003/api';
 

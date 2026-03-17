@@ -1,6 +1,7 @@
 {
   "name": "oxford-dictionary-sync-server",
   "version": "1.0.0",
+  "type": "module",
   "description": "Simple data collector for Oxford Dictionary Extension",
   "main": "server.js",
   "scripts": {

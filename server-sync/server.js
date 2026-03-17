@@ -1,9 +1,9 @@
-require('dotenv').config();
-const setupAuth = require('./auth');
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const mysql = require('mysql2/promise');
+import 'dotenv/config';
+import setupAuth from './auth.js';
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import mysql from 'mysql2/promise';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
