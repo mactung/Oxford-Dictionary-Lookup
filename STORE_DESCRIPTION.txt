@@ -17,6 +17,8 @@ Key Features:
   - Daily Practice Sessions for words due for review.
   - Quick Access: View and access your favorite bookmark folders directly from the new tab.
 - Audio Pronunciation: Listen to correct British and American pronunciations.
+- Cloud Sync: Register an account to sync your vocabulary library across multiple devices and never lose your progress.
+- Global Leaderboard: Compete with other learners worldwide based on your practice streaks and mastered words.
 
 ---
 Reason for requesting 'alarms' permission:
@@ -30,3 +32,39 @@ The 'bookmarks' permission is used to display the user's bookmark folders direct
 
 Reason for requesting host permissions (https://www.oxfordlearnersdictionaries.com/*):
 This host permission is strictly required to fetch dictionary definitions, phonetics, and audio examples directly from the Oxford Learner's Dictionary website when a user looks up a word. The extension parses the HTML from this specific domain to present a clean, ad-free definition card to the user. No other data is accessed or sent to this domain.
+
+Reason for requesting host permissions (https://oxford.ipamaster.site/*):
+This host permission is used to connect to the extension's official cloud synchronization server. This allows users to create an account, securely back up their vocabulary library, and sync their learning progress across different devices. User authentication is handled via encrypted tokens, and data is only transmitted when the user explicitly chooses to sync or participate in the leaderboard.
+
+============================================================
+VIETNAMESE VERSION (BẢN TIẾNG VIỆT)
+============================================================
+
+Tiêu đề: Tra từ điển Oxford & Học từ vựng thông minh
+
+Mô tả ngắn:
+Quét/chọn từ để xem định nghĩa từ Oxford Learner's Dictionary, lưu từ vựng và ghi nhớ sâu bằng phương pháp lặp lại ngắt quãng (SRS) ngay trên Tab mới.
+
+Mô tả chi tiết:
+Biến quá trình lướt web của bạn thành một hành trình học ngôn ngữ. Oxford Dictionary Lookup giúp bạn tra cứu nhanh định nghĩa của bất kỳ từ nào trên web và liên tục bồi đắp vốn từ vựng cá nhân.
+
+Các tính năng chính:
+
+- Tra cứu tức thì: Nhấp đúp hoặc chọn bất kỳ từ nào trên trang web để nhận định nghĩa chính xác, phiên âm và phát âm âm thanh từ Oxford Learner's Dictionary.
+- Lưu từ vựng thông minh: Tự động lưu các từ đã tra vào thư viện cá nhân của bạn.
+- Hệ thống lặp lại ngắt quãng (SRS): Làm chủ từ vựng hiệu quả với hệ thống ôn tập (quiz) được lên lịch vào các khoảng thời gian tối ưu.
+- Chế độ luyện tập ngẫu nhiên: Duy trì sự nhạy bén với các bài kiểm tra nhanh xuất hiện ngẫu nhiên khi bạn lướt web. Bạn có thể tùy chỉnh khoảng thời gian (15 phút, 30 phút, 1 giờ+) sao cho phù hợp với nhịp độ học tập.
+- Dashboard Tab mới đẹp mắt:
+  - Theo dõi tiến trình học tập với các biểu đồ trực quan.
+  - Các phiên luyện tập hàng ngày cho những từ cần ôn tập.
+  - Truy cập nhanh: Xem và truy cập các thư mục dấu trang (bookmarks) yêu thích ngay trên Tab mới.
+- Phát âm chuẩn: Nghe phát âm chuẩn Anh-Anh và Anh-Mỹ.
+- Đồng bộ đám mây (Cloud Sync): Đăng ký tài khoản để đồng bộ thư viện từ vựng trên nhiều thiết bị, không bao giờ lo mất dữ liệu.
+- Bảng xếp hạng toàn cầu: Thi đua cùng các học viên khác trên toàn thế giới dựa trên chuỗi ngày học (streak) và số từ đã làm chủ.
+
+============================================================
+CHROME WEB STORE DISCLOSURES
+============================================================
+
+Single-Purpose Description:
+The primary and single purpose of "Oxford Dictionary Lookup & Vocabulary Builder" is to provide an integrated language learning tool. It allows users to instantly look up word definitions from the Oxford Learner's Dictionary while browsing and subsequently master those saved words through a structured Spaced Repetition System (SRS) integrated into their browser's New Tab page. All features, including dictionary parsing, cloud synchronization, and progress tracking, are strictly designed to support this unified vocabulary acquisition workflow.

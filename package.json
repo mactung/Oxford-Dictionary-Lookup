@@ -7,7 +7,8 @@
         "dev": "vite --config vite.config.app.js",
         "build": "vite build --config vite.config.app.js && vite build --config vite.config.content.js",
         "preview": "vite preview",
-        "test": "vitest"
+        "test": "vitest",
+        "zip": "rm -f extension.zip && cd dist && zip -r ../extension.zip *"
     },
     "dependencies": {
         "i18next": "^25.8.18",
