@@ -17,7 +17,8 @@
     ],
     "host_permissions": [
         "https://www.oxfordlearnersdictionaries.com/*",
-        "http://localhost:3003/*"
+        "http://localhost:3003/*",
+        "https://oxford.ipamaster.site/*"
     ],
     "background": {
         "service_worker": "assets/background.js",

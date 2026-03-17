@@ -2,3 +2,5 @@
 *.zip
 /dist
 server-sync/node_modules
+server-sync/.env
+.env
