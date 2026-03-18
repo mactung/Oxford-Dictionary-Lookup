@@ -1,0 +1,41 @@
+{
+  "common": {
+    "loading": "กำลังโหลด...",
+    "error": "เกิดข้อผิดพลาด",
+    "save": "บันทึก",
+    "cancel": "ยกเลิก",
+    "settings": "การตั้งค่า",
+    "search": "ค้นหา"
+  },
+  "nav": {
+    "dashboard": "แดชบอร์ด",
+    "library": "คลังคำศัพท์",
+    "leaderboard": "ตารางผู้นำ"
+  },
+  "dashboard": {
+    "greeting": "สวัสดีตอนบ่าย!",
+    "subGreeting": "พร้อมที่จะขยายคลังคำศัพท์ของคุณในวันนี้หรือยัง?",
+    "searchPlaceholder": "ค้นหาพจนานุกรมหรือเพิ่มคำศัพท์ใหม่...",
+    "quickAccess": "การเข้าถึงด่วน",
+    "selectFolder": "เลือกโฟลเดอร์",
+    "wordsToReview": "คำศัพท์ที่ต้องทบทวน",
+    "totalWords": "คำศัพท์ทั้งหมด",
+    "mastered": "เชี่ยวชาญแล้ว",
+    "dailyPractice": "เซสชันการฝึกฝนรายวัน",
+    "startSession": "เริ่มเซสชัน",
+    "randomPractice": "โหมดสุ่มฝึกฝน",
+    "randomPracticeDesc": "แสดงแบบทดสอบสั้นๆ เป็นครั้งคราวขณะท่องเว็บ",
+    "enabled": "เปิดใช้งาน",
+    "disabled": "ปิดใช้งาน"
+  },
+  "popup": {
+    "title": "ค้นหาพจนานุกรม Oxford",
+    "searchPlaceholder": "ค้นหาคำ...",
+    "noResults": "ไม่พบผลลัพธ์"
+  },
+  "newtab": {
+    "title": "เครื่องมือสร้างคำศัพท์",
+    "practice": "แบบฝึกหัด",
+    "history": "ประวัติ"
+  }
+}

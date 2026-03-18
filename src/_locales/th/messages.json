@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "ค้นหาพจนานุกรม Oxford",
+    "description": "Name of the extension"
+  },
+  "appDesc": {
+    "message": "ค้นหาพจนานุกรม Oxford ทันที ตัวสร้างคำศัพท์ และแบบทดสอบการฝึกฝนที่ชาญฉลาด",
+    "description": "Description of the extension"
+  }
+}

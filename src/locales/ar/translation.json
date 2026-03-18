@@ -1,0 +1,41 @@
+{
+  "common": {
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ",
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "settings": "الإعدادات",
+    "search": "بحث"
+  },
+  "nav": {
+    "dashboard": "لوحة التحكم",
+    "library": "المكتبة",
+    "leaderboard": "قائمة المتصدرين"
+  },
+  "dashboard": {
+    "greeting": "طاب يومك!",
+    "subGreeting": "هل أنت مستعد لتوسيع مفرداتك اليوم؟",
+    "searchPlaceholder": "ابحث في القاموس أو أضف كلمة جديدة...",
+    "quickAccess": "وصول سريع",
+    "selectFolder": "اختر مجلدًا",
+    "wordsToReview": "كلمات للمراجعة",
+    "totalWords": "إجمالي الكلمات",
+    "mastered": "متقنة",
+    "dailyPractice": "جلسة الممارسة اليومية",
+    "startSession": "ابدأ الجلسة",
+    "randomPractice": "وضع الممارسة العشوائي",
+    "randomPracticeDesc": "عرض اختبار سريع أحيانًا أثناء تصفح الويب.",
+    "enabled": "مفعل",
+    "disabled": "معطل"
+  },
+  "popup": {
+    "title": "بحث في قاموس أكسفورد",
+    "searchPlaceholder": "ابحث عن كلمة...",
+    "noResults": "لم يتم العثور على نتائج."
+  },
+  "newtab": {
+    "title": "بناء المفردات",
+    "practice": "تدريب",
+    "history": "السجل"
+  }
+}

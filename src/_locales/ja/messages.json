@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "オックスフォード辞書検索",
+    "description": "Name of the extension"
+  },
+  "appDesc": {
+    "message": "即座のオックスフォード辞書検索、語彙ビルダー、およびスマートな練習クイズ。",
+    "description": "Description of the extension"
+  }
+}

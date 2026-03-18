@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "옥스퍼드 사전 검색",
+    "description": "Name of the extension"
+  },
+  "appDesc": {
+    "message": "즉각적인 옥스퍼드 사전 검색, 어휘 학습 및 스마트 연습 퀴즈.",
+    "description": "Description of the extension"
+  }
+}

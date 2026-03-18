@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "بحث في قاموس أكسفورد",
+    "description": "Name of the extension"
+  },
+  "appDesc": {
+    "message": "بحث فوري في قاموس أكسفورد، وبناء المفردات، واختبارات تدريب ذكية.",
+    "description": "Description of the extension"
+  }
+}

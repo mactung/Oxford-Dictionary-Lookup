@@ -1,0 +1,41 @@
+{
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "त्रुटि हुई",
+    "save": "सहेजें",
+    "cancel": "रद्द करें",
+    "settings": "सेटिंग्स",
+    "search": "खोज"
+  },
+  "nav": {
+    "dashboard": "डैशबोर्ड",
+    "library": "लाइब्रेरी",
+    "leaderboard": "लीडरबोर्ड"
+  },
+  "dashboard": {
+    "greeting": "शुभ दोपहर!",
+    "subGreeting": "आज अपनी शब्दावली बढ़ाने के लिए तैयार हैं?",
+    "searchPlaceholder": "शब्दकोश खोजें या नया शब्द जोड़ें...",
+    "quickAccess": "त्वरित पहुँच",
+    "selectFolder": "फोल्डर चुनें",
+    "wordsToReview": "समीक्षा के लिए शब्द",
+    "totalWords": "कुल शब्द",
+    "mastered": "महारत हासिल की",
+    "dailyPractice": "दैनिक अभ्यास सत्र",
+    "startSession": "सत्र शुरू करें",
+    "randomPractice": "यादृच्छिक अभ्यास मोड",
+    "randomPracticeDesc": "वेब ब्राउज़ करते समय कभी-कभी एक त्वरित प्रश्नोत्तरी दिखाएं।",
+    "enabled": "सक्षम",
+    "disabled": "अक्षम"
+  },
+  "popup": {
+    "title": "ऑक्सफोर्ड डिक्शनरी लुकअप",
+    "searchPlaceholder": "शब्द खोजें...",
+    "noResults": "कोई परिणाम नहीं मिला।"
+  },
+  "newtab": {
+    "title": "शब्दावली निर्माता",
+    "practice": "अभ्यास",
+    "history": "इतिहास"
+  }
+}

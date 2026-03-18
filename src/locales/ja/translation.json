@@ -1,0 +1,41 @@
+{
+  "common": {
+    "loading": "読み込み中...",
+    "error": "エラーが発生しました",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "settings": "設定",
+    "search": "検索"
+  },
+  "nav": {
+    "dashboard": "ダッシュボード",
+    "library": "ライブラリ",
+    "leaderboard": "リーダーボード"
+  },
+  "dashboard": {
+    "greeting": "こんにちは！",
+    "subGreeting": "今日は語彙を増やす準備ができていますか？",
+    "searchPlaceholder": "辞書を検索するか、新しい単語を追加...",
+    "quickAccess": "クィックアクセス",
+    "selectFolder": "フォルダを選択",
+    "wordsToReview": "復習する単語",
+    "totalWords": "合計単語数",
+    "mastered": "習得済み",
+    "dailyPractice": "今日の練習セッション",
+    "startSession": "セッションを開始",
+    "randomPractice": "ランダム練習モード",
+    "randomPracticeDesc": "ウェブ閲覧中に時々クイッククイズを表示します。",
+    "enabled": "有効",
+    "disabled": "無効"
+  },
+  "popup": {
+    "title": "オックスフォード辞書検索",
+    "searchPlaceholder": "単語を検索...",
+    "noResults": "結果が見つかりませんでした。"
+  },
+  "newtab": {
+    "title": "語彙ビルダー",
+    "practice": "練習",
+    "history": "履歴"
+  }
+}

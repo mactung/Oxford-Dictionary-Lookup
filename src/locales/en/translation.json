@@ -4,7 +4,29 @@
     "error": "Error occurred",
     "save": "Save",
     "cancel": "Cancel",
-    "settings": "Settings"
+    "settings": "Settings",
+    "search": "Search"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "library": "Library",
+    "leaderboard": "Leaderboard"
+  },
+  "dashboard": {
+    "greeting": "Good Afternoon!",
+    "subGreeting": "Ready to expand your vocabulary today?",
+    "searchPlaceholder": "Search dictionary or add a new word...",
+    "quickAccess": "Quick Access",
+    "selectFolder": "Select a folder",
+    "wordsToReview": "Words to Review",
+    "totalWords": "Total Words",
+    "mastered": "Mastered",
+    "dailyPractice": "Daily Practice Session",
+    "startSession": "Start Session",
+    "randomPractice": "Random Practice Mode",
+    "randomPracticeDesc": "Occasionally show a quick quiz while you browse the web.",
+    "enabled": "Enabled",
+    "disabled": "Disabled"
   },
   "popup": {
     "title": "Oxford Dictionary Lookup",

@@ -4,6 +4,11 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 import enTranslation from './locales/en/translation.json';
 import viTranslation from './locales/vi/translation.json';
+import hiTranslation from './locales/hi/translation.json';
+import arTranslation from './locales/ar/translation.json';
+import koTranslation from './locales/ko/translation.json';
+import jaTranslation from './locales/ja/translation.json';
+import thTranslation from './locales/th/translation.json';
 
 i18n
   .use(LanguageDetector)
@@ -15,6 +20,21 @@ i18n
       },
       vi: {
         translation: viTranslation
+      },
+      hi: {
+        translation: hiTranslation
+      },
+      ar: {
+        translation: arTranslation
+      },
+      ko: {
+        translation: koTranslation
+      },
+      ja: {
+        translation: jaTranslation
+      },
+      th: {
+        translation: thTranslation
       }
     },
     fallbackLng: 'en',
@@ -24,3 +44,4 @@ i18n
   });
 
 export default i18n;
+

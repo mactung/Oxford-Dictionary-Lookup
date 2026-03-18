@@ -1,0 +1,10 @@
+{
+  "appName": {
+    "message": "ऑक्सफोर्ड डिक्शनरी लुकअप",
+    "description": "Name of the extension"
+  },
+  "appDesc": {
+    "message": "तत्काल ऑक्सफोर्ड डिक्शनरी लुकअप, शब्दावली निर्माता और स्मार्ट अभ्यास क्विज़।",
+    "description": "Description of the extension"
+  }
+}

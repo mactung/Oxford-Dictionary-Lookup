@@ -1,0 +1,41 @@
+{
+  "common": {
+    "loading": "로딩 중...",
+    "error": "오류가 발생했습니다",
+    "save": "저장",
+    "cancel": "취소",
+    "settings": "설정",
+    "search": "검색"
+  },
+  "nav": {
+    "dashboard": "대시보드",
+    "library": "라이브러리",
+    "leaderboard": "리더보드"
+  },
+  "dashboard": {
+    "greeting": "안녕하세요!",
+    "subGreeting": "오늘 어휘를 확장할 준비가 되셨나요?",
+    "searchPlaceholder": "사전 검색 또는 새 단어 추가...",
+    "quickAccess": "빠른 액세스",
+    "selectFolder": "폴더 선택",
+    "wordsToReview": "복습할 단어",
+    "totalWords": "전체 단어",
+    "mastered": "마스터함",
+    "dailyPractice": "일일 연습 세션",
+    "startSession": "세션 시작",
+    "randomPractice": "랜덤 연습 모드",
+    "randomPracticeDesc": "웹 서핑 중에 가끔 퀴즈를 보여줍니다.",
+    "enabled": "활성화됨",
+    "disabled": "비활성화됨"
+  },
+  "popup": {
+    "title": "옥스퍼드 사전 검색",
+    "searchPlaceholder": "단어 검색...",
+    "noResults": "결과를 찾을 수 없습니다."
+  },
+  "newtab": {
+    "title": "어휘 학습",
+    "practice": "연습",
+    "history": "기록"
+  }
+}
