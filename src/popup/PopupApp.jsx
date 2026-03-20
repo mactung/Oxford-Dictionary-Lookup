@@ -9,6 +9,7 @@ export default function PopupApp() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [saved, setSaved] = useState(false);
+    const [showRatingPrompt, setShowRatingPrompt] = useState(false);
     
     // User State
     const [token, setToken] = useState(null);
@@ -38,37 +39,74 @@ export default function PopupApp() {
                 const res = await syncUserVocabulary(authToken, localVocab);
                 if (res.success && res.vocabulary) {
                     console.log('Sync success, merging...');
-                    // Merge strategy: Union based on headword
-                    // Ideally we should respect timestamps, but for now we just take server's view if conflict?
-                    // Or simple: Just ensure we have everything from server.
-                    
-                    const serverVocab = res.vocabulary; // { headword, srs_level, ... }
-                    
-                    // Creates a map of existing local items for preservation of extra fields (contextUrl etc)
+                    const serverVocab = res.vocabulary;
                     const localMap = new Map(localVocab.map(i => [i.headword, i]));
-                    
                     const merged = [...localVocab];
+                    const wordsToHydrate = [];
                     
                     serverVocab.forEach(sv => {
                         if (!localMap.has(sv.headword)) {
-                            // New word from server
                             merged.push({
                                 headword: sv.headword,
-                                pos: 'unknown', // Server simplified this? Ideally server should store full data or we refetch
+                                pos: 'unknown',
                                 srsLevel: sv.srs_level,
                                 nextReview: new Date(sv.next_review).getTime(),
                                 contextUrl: 'Synced',
-                                definition: 'Synced from other device' // Placeholder until viewed
+                                definition: 'Synced from other device'
                             });
+                            wordsToHydrate.push(sv.headword);
                         }
                     });
                     
-                    chrome.storage.local.set({ vocabulary: merged });
+                    chrome.storage.local.set({ vocabulary: merged }, () => {
+                        hydrateWords(wordsToHydrate);
+                    });
                 }
             } catch (err) {
                 console.error('Sync failed', err);
             }
         });
+    };
+
+    const hydrateWords = async (words) => {
+        for (const word of words) {
+            await new Promise(resolve => {
+                chrome.runtime.sendMessage({ action: 'fetchDefinition', word }, (response) => {
+                    if (response && response.success) {
+                        const fetchedData = response.localData || parseOxfordHTML(response.html);
+                        if (!fetchedData.error) {
+                            chrome.storage.local.get(['vocabulary'], (res) => {
+                                const currentVocab = res.vocabulary || [];
+                                const idx = currentVocab.findIndex(v => v.headword === word);
+                                if (idx !== -1) {
+                                    currentVocab[idx] = {
+                                        ...fetchedData,
+                                        ...currentVocab[idx],
+                                        phonetics: fetchedData.phonetics,
+                                        senses: fetchedData.senses,
+                                        pos: fetchedData.pos,
+                                        idioms: fetchedData.idioms,
+                                        phrasalVerbs: fetchedData.phrasalVerbs,
+                                        verbForms: fetchedData.verbForms,
+                                        topics: fetchedData.topics
+                                    };
+                                    chrome.storage.local.set({ vocabulary: currentVocab }, () => {
+                                        resolve();
+                                    });
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        } else {
+                            resolve();
+                        }
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+            await new Promise(r => setTimeout(r, 800));
+        }
     };
 
     useEffect(() => {
@@ -139,6 +177,17 @@ export default function PopupApp() {
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word: query.trim() }, (response) => {
             setLoading(false);
             if (response && response.success) {
+                // Check and update lookup count for rating
+                chrome.storage.local.get(['lookupCount', 'hasRated', 'ratePromptDismissed'], (res) => {
+                    if (!res.hasRated && !res.ratePromptDismissed) {
+                        const count = (res.lookupCount || 0) + 1;
+                        chrome.storage.local.set({ lookupCount: count });
+                        if (count >= 50) {
+                            setShowRatingPrompt(true);
+                        }
+                    }
+                });
+
                 if (response.localData) {
                     setData(response.localData);
                     // No need to sync back to cloud if it came from cloud/local? 
@@ -203,6 +252,38 @@ export default function PopupApp() {
                     </button>
                 )}
             </div>
+
+            {/* Rating Prompt */}
+            {showRatingPrompt && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 p-3 shrink-0 animate-fade-in relative">
+                    <button 
+                        onClick={() => {
+                            setShowRatingPrompt(false);
+                            chrome.storage.local.set({ ratePromptDismissed: true });
+                        }} 
+                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <X size={14} />
+                    </button>
+                    <h4 className="font-bold text-oxford-blue text-sm flex items-center gap-1.5 mb-1.5">
+                        <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                        Enjoying the Extension?
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-2.5 pr-4 leading-relaxed">
+                        You've looked up quite a few words! If this extension helps you, we'd love a quick review.
+                    </p>
+                    <button
+                        onClick={() => {
+                            setShowRatingPrompt(false);
+                            chrome.storage.local.set({ hasRated: true });
+                            window.open('https://chrome.google.com/webstore', '_blank');
+                        }}
+                        className="w-full bg-oxford-blue text-white py-1.5 rounded-md text-xs font-bold hover:bg-blue-800 transition-colors"
+                    >
+                        Rate 5 Stars ⭐
+                    </button>
+                </div>
+            )}
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">

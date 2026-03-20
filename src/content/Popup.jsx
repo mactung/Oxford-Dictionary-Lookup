@@ -7,6 +7,7 @@ export default function Popup({ x, y, word, onClose }) {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [saved, setSaved] = useState(false);
+    const [showRatingPrompt, setShowRatingPrompt] = useState(false);
 
     useEffect(() => {
         if (data && data.headword) {
@@ -22,6 +23,17 @@ export default function Popup({ x, y, word, onClose }) {
         setLoading(true);
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word }, (response) => {
             if (response && response.success) {
+                // Check and update lookup count for rating
+                chrome.storage.local.get(['lookupCount', 'hasRated', 'ratePromptDismissed'], (res) => {
+                    if (!res.hasRated && !res.ratePromptDismissed) {
+                        const count = (res.lookupCount || 0) + 1;
+                        chrome.storage.local.set({ lookupCount: count });
+                        if (count >= 50) {
+                            setShowRatingPrompt(true);
+                        }
+                    }
+                });
+
                 if (response.localData) {
                     setData(response.localData);
                 } else {
@@ -101,8 +113,40 @@ export default function Popup({ x, y, word, onClose }) {
                 </div>
             </div>
 
+            {/* Rating Prompt */}
+            {showRatingPrompt && (
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 p-3 shrink-0 animate-fade-in relative">
+                    <button 
+                        onClick={() => {
+                            setShowRatingPrompt(false);
+                            chrome.storage.local.set({ ratePromptDismissed: true });
+                        }} 
+                        className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors"
+                    >
+                        <X size={14} />
+                    </button>
+                    <h4 className="font-bold text-oxford-blue text-sm flex items-center gap-1.5 mb-1.5">
+                        <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                        Enjoying the Extension?
+                    </h4>
+                    <p className="text-xs text-gray-600 mb-2.5 pr-4 leading-relaxed">
+                        You've looked up quite a few words! If this extension helps you, we'd love a quick review.
+                    </p>
+                    <button
+                        onClick={() => {
+                            setShowRatingPrompt(false);
+                            chrome.storage.local.set({ hasRated: true });
+                            window.open('https://chrome.google.com/webstore', '_blank');
+                        }}
+                        className="w-full bg-oxford-blue text-white py-1.5 rounded-md text-xs font-bold hover:bg-blue-800 transition-colors"
+                    >
+                        Rate 5 Stars ⭐
+                    </button>
+                </div>
+            )}
+
             {/* Content */}
-            <div className="p-4 overflow-y-auto custom-scrollbar">
+            <div className="p-4 overflow-y-auto custom-scrollbar flex-1">
                 {loading ? (
                     <div className="flex flex-col items-center justify-center py-8 text-gray-400">
                         <Loader2 className="animate-spin mb-2" />

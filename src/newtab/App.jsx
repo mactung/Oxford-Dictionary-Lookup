@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award, Plus, Loader2, Check, Settings, Clock, Power, User, X } from 'lucide-react';
+import { Trash2, Volume2, ExternalLink, Home, BookOpen, Brain, Search, TrendingUp, Award, Plus, Loader2, Check, Settings, Clock, Power, User, X, Star } from 'lucide-react';
 import { parseOxfordHTML } from '../utils/parser';
 
 import Quiz from './Quiz';
@@ -25,7 +25,8 @@ export default function App() {
     const [searchedWordData, setSearchedWordData] = useState(null);
     const [searchError, setSearchError] = useState(null);
     const [showAddModal, setShowAddModal] = useState(false);
-
+    const [showRatingPrompt, setShowRatingPrompt] = useState(false);
+    
     // Library Search State
     const [librarySearchQuery, setLibrarySearchQuery] = useState('');
 
@@ -184,6 +185,7 @@ export default function App() {
                 const merged = [...localVocab];
                 
                 let changed = false;
+                const wordsToHydrate = [];
                 serverVocab.forEach(sv => {
                     if (!localMap.has(sv.headword)) {
                         merged.push({
@@ -195,15 +197,61 @@ export default function App() {
                             definition: 'Synced via New Tab'
                         });
                         changed = true;
+                        wordsToHydrate.push(sv.headword);
                     }
                 });
 
                 if (changed) {
                     setVocabulary(merged); // Update state
-                    chrome.storage.local.set({ vocabulary: merged });
+                    chrome.storage.local.set({ vocabulary: merged }, () => {
+                        hydrateWords(wordsToHydrate);
+                    });
                 }
             }
         }).catch(err => console.error('Sync failed', err));
+    };
+
+    const hydrateWords = async (words) => {
+        for (const word of words) {
+            await new Promise(resolve => {
+                chrome.runtime.sendMessage({ action: 'fetchDefinition', word }, (response) => {
+                    if (response && response.success) {
+                        const fetchedData = response.localData || parseOxfordHTML(response.html);
+                        if (!fetchedData.error) {
+                            chrome.storage.local.get(['vocabulary'], (res) => {
+                                const currentVocab = res.vocabulary || [];
+                                const idx = currentVocab.findIndex(v => v.headword === word);
+                                if (idx !== -1) {
+                                    currentVocab[idx] = {
+                                        ...fetchedData,
+                                        ...currentVocab[idx],
+                                        phonetics: fetchedData.phonetics,
+                                        senses: fetchedData.senses,
+                                        pos: fetchedData.pos,
+                                        idioms: fetchedData.idioms,
+                                        phrasalVerbs: fetchedData.phrasalVerbs,
+                                        verbForms: fetchedData.verbForms,
+                                        topics: fetchedData.topics
+                                    };
+                                    chrome.storage.local.set({ vocabulary: currentVocab }, () => {
+                                        setVocabulary(currentVocab);
+                                        resolve();
+                                    });
+                                } else {
+                                    resolve();
+                                }
+                            });
+                        } else {
+                            resolve();
+                        }
+                    } else {
+                        resolve();
+                    }
+                });
+            });
+            // Small delay to prevent rate-limiting when syncing multiple words
+            await new Promise(r => setTimeout(r, 800));
+        }
     };
 
     // --- Search & Add Logic ---
@@ -231,6 +279,17 @@ export default function App() {
         chrome.runtime.sendMessage({ action: 'fetchDefinition', word: wordToSearch }, (response) => {
             setIsSearching(false);
             if (response && response.success) {
+                // Check and update lookup count for rating
+                chrome.storage.local.get(['lookupCount', 'hasRated', 'ratePromptDismissed'], (res) => {
+                    if (!res.hasRated && !res.ratePromptDismissed) {
+                        const count = (res.lookupCount || 0) + 1;
+                        chrome.storage.local.set({ lookupCount: count });
+                        if (count >= 50) {
+                            setShowRatingPrompt(true);
+                        }
+                    }
+                });
+
                 if (response.localData) {
                     setSearchedWordData(response.localData);
                     // No sync needed usually if local
@@ -499,6 +558,40 @@ export default function App() {
                                 </button>
                             </form>
                         </div>
+
+                        {/* Rating Prompt Banner */}
+                        {showRatingPrompt && (
+                            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 relative animate-fade-in shadow-sm max-w-4xl">
+                                <button 
+                                    onClick={() => {
+                                        setShowRatingPrompt(false);
+                                        chrome.storage.local.set({ ratePromptDismissed: true });
+                                    }} 
+                                    className="absolute top-4 right-4 text-blue-300 hover:text-blue-500 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                                <div>
+                                    <h2 className="text-xl font-bold text-oxford-blue flex items-center gap-2 mb-2">
+                                        <Star fill="currentColor" className="text-yellow-500" />
+                                        Enjoying OxfordVocab?
+                                    </h2>
+                                    <p className="text-gray-600 max-w-lg text-sm">
+                                        You've looked up 50+ words! If this extension is helping you learn, we'd really appreciate a quick review. It helps us grow!
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setShowRatingPrompt(false);
+                                        chrome.storage.local.set({ hasRated: true });
+                                        window.open('https://chrome.google.com/webstore', '_blank');
+                                    }}
+                                    className="bg-oxford-blue text-white px-8 py-3 rounded-xl font-bold hover:bg-blue-800 transition-colors whitespace-nowrap shadow-md hover:shadow-lg"
+                                >
+                                    Rate 5 Stars ⭐
+                                </button>
+                            </div>
+                        )}
 
                         {/* Bookmarks Section */}
                         <div className="max-w-4xl mx-auto md:mx-0">
